@@ -74,11 +74,15 @@ sudo apt-get install -y \
     curl \
     i2c-tools \
     python3-dev \
+    libcap-dev \
+    python3-rpi.gpio \
     libatlas-base-dev \
     libjasper-dev \
     libtiff5 \
     libcamera-tools
 ```
+
+**Note**: `libcap-dev` is required for `python-prctl`, and `python3-rpi.gpio` provides the GPIO library (installed via apt to avoid build issues).
 
 ### Step 4: Install uv (Fast Python Package Manager)
 
@@ -113,38 +117,26 @@ git clone <your-repo-url>
 cd picar-x
 ```
 
-### Step 5: Sync Dependencies with uv
+### Step 5: Install Dependencies with uv
 
 ```bash
-# Sync all dependencies (creates .venv automatically)
-uv sync --python 3.9
+# Create virtual environment
+uv venv --python 3.9
 
-# Verify insConfigure Hardware Pins (If Needed)
+# Install dependencies
+uv pip install -r requirements.txt
 
-Verify GPIO pin assignments match your setup:
+# Activate virtual environment
+source .venv/bin/activate
 
-```bash
-nano ~/projects/picar-x/config/config.py
+# Run server
+python backend/app.py
 ```
 
-Check these values:
-```python
-# Motor pins (BCM numbering)
-MOTOR_LEFT_FORWARD = 17
-MOTOR_LEF9_BACKWARD = 18
-MOTOR_RIGHT_FORWARD = 27
-MOTOR_RIGHT_BACKWARD = 22
-
-# Servo channels (PCA9685)
-SERVO_PAN_CHANNEL = 0
-SERVO_TILT_CHANNEL = 1
-```
-
-Adjust if your wiring is different.
-
-### Step 8: tallation
-uv pip list
-```
+**Why this approach?**
+- Avoids building the project as a package (which can fail due to multiple top-level directories)
+- Uses system-installed RPi.GPIO instead of pip version (avoids linking errors)
+- Faster and more reliable than `uv sync` for this project structure
 
 ### Step 7: Verify Camera
 
@@ -196,17 +188,7 @@ Default PCA9685 address: `0x40` (verify with `i2cdetect`)
 
 ## Starting the Server
 
-### Option 1: Quick Start with uv
-
-```bash
-# Sync dependencies (one-time setup)
-uv sync --python 3.9
-
-# Run server
-uv run python backend/app.py
-```
-
-### Option 2: Using Launch Scripts
+### Option 1: Using Launch Scripts (Recommended)
 
 ```bash
 # Linux/Raspberry Pi
@@ -217,12 +199,37 @@ chmod +x start.sh
 start.bat
 ```
 
+The script will:
+- Install uv if needed
+- Create virtual environment
+- Install dependencies
+- Start the Flask server on port 5000
+
 Expected output:
 ```
-Motor controller initialized successfully
-Servo controller initialized successfully
-Camera initialized successfully
+===========================================
+PiCar-X Setup & Launch Script (uv)
+===========================================
+Project directory: /home/nelson/Documents/picar-x
+Creating virtual environment with uv...
+Installing dependencies with uv...
+Starting PiCar-X server...
+Access the web interface at: http://192.168.1.204:5000
 Starting Flask server on 0.0.0.0:5000
+```
+
+### Option 2: Manual Start
+
+```bash
+# Create virtual environment
+uv venv --python 3.9
+
+# Install dependencies
+uv pip install -r requirements.txt
+
+# Activate and run
+source .venv/bin/activate
+python backend/app.py
 ```
 
 ### Option 3: Run as Service (Autostart)
@@ -244,7 +251,7 @@ After=network.target
 Type=simple
 User=pi
 WorkingDirectory=/home/pi/picar-x
-ExecStart=/home/pi/.cargo/bin/uv run python backend/app.py
+ExecStart=/home/pi/picar-x/.venv/bin/python backend/app.py
 Environment="PATH=/home/pi/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Restart=always
 RestartSec=5
@@ -256,6 +263,11 @@ WantedBy=multi-user.target
 Enable and start:
 
 ```bash
+sudo systemctl daemon-reload
+sudo systemctl enable picar
+sudo systemctl start picar
+sudo systemctl status picar
+```
 sudo systemctl daemon-reload
 sudo systemctl enable picar.service
 sudo systemctl start picar.service

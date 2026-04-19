@@ -3,28 +3,30 @@ name = "picar-x"
 version = "1.0.0"
 description = "Modular web-based control system for Sunfounder PiCar-X robot"
 readme = "README.md"
-requires-python = ">=3.9"
-license = {text = "Private"}
+requires-python = ">=3.10"
+license = {text = "MIT"}
 authors = [{name = "PiCar Developer"}]
 
 dependencies = [
-    "flask==2.3.0",
-    "flask-cors==4.0.0",
-    "Werkzeug==2.3.0",
-    "picamera2==0.3.9",
-    "adafruit-circuitpython-pca9685",
-    "RPi.GPIO==0.7.0",
+    "flask>=2.3.0",
+    "flask-cors>=4.0.0",
+    "Werkzeug>=2.3.0",
+    # "picamera2>=0.3.34",
+    "robot-hat",
+    "rpi-gpio==0.7.1",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==7.4.0",
-    "pytest-cov==4.1.0",
-    "black==23.7.0",
-    "flake8==6.0.0",
-    "mypy==1.4.1",
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.7.0",
+    "flake8>=6.0.0",
+    "mypy>=1.4.1",
 ]
-
+[tool.setuptools]
+packages = ["picar", "config"]
+# exclude = ["ansible*", "frontend*", "backend*", "tests*", "docs*"]
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
+requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"

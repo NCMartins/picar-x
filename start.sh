@@ -37,10 +37,18 @@ if ! command -v uv &> /dev/null; then
     echo -e "${GREEN}uv installed successfully. Continuing...${NC}"
 fi
 
-# Sync dependencies using uv
-echo -e "${YELLOW}Syncing dependencies with uv...${NC}"
-if ! uv sync; then
-    echo -e "${RED}Failed to sync dependencies. Please check your Python installation.${NC}"
+# Create virtual environment with system site packages
+echo -e "${YELLOW}Creating virtual environment with system site packages...${NC}"
+rm -rf .venv
+if ! python3 -m venv --system-site-packages .venv; then
+    echo -e "${RED}Failed to create virtual environment.${NC}"
+    exit 1
+fi
+
+# Install dependencies using uv
+echo -e "${YELLOW}Installing dependencies with uv...${NC}"
+if ! uv pip install -r requirements.txt; then
+    echo -e "${RED}Failed to install dependencies. Please check your Python installation.${NC}"
     exit 1
 fi
 
@@ -56,7 +64,8 @@ echo -e "${BLUE}Access the web interface at: http://${IP_ADDRESS}:5000${NC}"
 echo ""
 
 cd "$PROJECT_DIR/backend"
-if ! uv run python app.py; then
+source "$PROJECT_DIR/.venv/bin/activate"
+if ! python app.py; then
     echo -e "${RED}Failed to start the server. Please check the error messages above.${NC}"
     exit 1
 fi

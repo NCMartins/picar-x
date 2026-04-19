@@ -57,7 +57,7 @@
     timeout: 60
 
 - name: Verify camera hardware
-  command: libcamera-hello --list-cameras
+  command: rpicam-still --list-cameras
   register: camera_check
   ignore_errors: yes
   changed_when: false

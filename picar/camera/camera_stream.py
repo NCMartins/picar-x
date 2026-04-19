@@ -65,7 +65,7 @@ class CameraStream:
             print(f"Error initializing camera: {e}")
             self.camera = None
     
-    def get_frame(self) -> Optional[bytes]:
+    def get_frame(self) -> bytes | None:
         """
         Capture a single frame from camera
         

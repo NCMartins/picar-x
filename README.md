@@ -54,12 +54,9 @@ picar/
 ## Hardware Requirements
 
 - **Raspberry Pi 4B** (4GB+ recommended)
-- **Sunfounder PiCar-X** kit
+- **Sunfounder PiCar-X** kit with **Robot Hat v4**
 - **Camera module** (Pi Camera V2 or V3)
-- **I2C servo driver** (PCA9685 - included in kit)
-- **DC motors** (for movement)
-- **Servo motors** (for camera control)
-- **Stable power supply** (5V for Pi, appropriate voltage for motors)
+- **Stable power supply** (6.0V-8.4V XH2.54 3pin power input)
 
 ## Installation
 
@@ -78,7 +75,7 @@ ansible-playbook -i inventory.ini playbook.yml
 
 This automatically:
 - Configures system settings and networking
-- Installs all dependencies
+- Installs all dependencies including `robot-hat` library
 - Deploys the PiCar-X application
 - Sets up systemd service for auto-start
 - Verifies hardware connectivity
@@ -122,24 +119,25 @@ git clone <your-repo-url> picar-x
 cd picar-x
 ```
 
-### 4. Sync Dependencies with uv
+### 4. Setup Virtual Environment and Install Dependencies
 
 ```bash
-# Sync all dependencies (creates virtual environment automatically)
-uv sync --python 3.9
+# Create virtual environment
+uv venv
+
+# Install Python dependencies (includes robot-hat)
+uv pip install -r requirements.txt
 ```
 
 ### 5. Run the Server
 
 ```bash
-# Linux/macOS
-uv run python backend/app.py
-
-# Windows
-uv run python backend\app.py
+# Activate virtual environment and run
+source .venv/bin/activate
+python backend/app.py
 ```
 
-Or use the provided launcher scripts:
+Or use the provided launcher script:
 ```bash
 chmod +x start.sh
 ./start.sh  # Linux/macOS
@@ -149,32 +147,40 @@ chmod +x start.sh
 start.bat   # Windows
 ```
 
-### 5. Configure Hardware
+## Configuration
 
-Edit `config/config.py` to match your GPIO pin assignments:
+The application uses `robot-hat` library for hardware control. No additional GPIO configuration is needed - the library handles all hardware abstraction.
+
+Default pin assignments (robot-hat naming):
+- **Motors**: M1 (left), M2 (right)
+- **Servos**: P0 (pan), P1 (tilt)
+
+To customize, edit `config/config.py`:
 
 ```python
-# Motor pins (BCM numbering)
-MOTOR_LEFT_FORWARD = 17
-MOTOR_LEFT_BACKWARD = 18
-MOTOR_RIGHT_FORWARD = 27
-MOTOR_RIGHT_BACKWARD = 22
+# Motor pins (using robot-hat naming)
+MOTOR_LEFT = "M1"  # Left motor
+MOTOR_RIGHT = "M2"  # Right motor
 
-# Servo channels
-SERVO_PAN_CHANNEL = 0
-SERVO_TILT_CHANNEL = 1
+# Servo pins (using robot-hat naming)
+SERVO_PAN_PIN = "P0"  # Pan servo
+SERVO_TILT_PIN = "P1"  # Tilt servo
 ```
 
 ## Usage
 
-### Start the Server with uv
+### Start the Server
 
 ```bash
-# Sync dependencies (one-time)
-uv sync --python 3.9
+# Setup virtual environment (one-time)
+uv venv
+
+# Install dependencies
+uv pip install -r requirements.txt
 
 # Run server
-uv run python backend/app.py
+source .venv/bin/activate
+python backend/app.py
 ```
 
 Or use the launcher script:
@@ -266,16 +272,24 @@ http://<raspberry-pi-ip>:5000
 
 ### Run in Simulation Mode
 
-The application runs in simulation mode when hardware is not available:
+The application automatically runs in simulation mode when hardware is not available or not properly configured. You'll see warnings like:
+
+```
+Warning: RPi.GPIO not available - running in simulation mode
+Warning: Adafruit PCA9685 not available - running in simulation mode
+Warning: picamera2 not available - running in simulation mode
+```
+
+In simulation mode:
+- Motor controls will log commands instead of moving hardware
+- Camera stream will show placeholder frames
+- All web interface features remain functional for testing
 
 ```bash
 # Works on any system without Raspberry Pi hardware
-python app.py
+source .venv/bin/activate
+python backend/app.py
 ```
-
-- Motor controls will log commands instead of moving hardware
-- Camera stream will show placeholder frames
-- All web interface features remain functional
 
 ### Testing Individual Modules
 
@@ -315,11 +329,11 @@ SERVO_MAX_ANGLE = 90
 ### Camera Not Appearing
 
 ```bash
-# Check if camera is enabled
+# Check if camera is enabled and detected
 vcgencmd get_camera
 
-# Check camera is connected
-libcamera-hello --list-cameras
+# For Raspberry Pi OS Bookworm with libcamera:
+rpicam-still --list-cameras
 ```
 
 ### I2C Servo Issues

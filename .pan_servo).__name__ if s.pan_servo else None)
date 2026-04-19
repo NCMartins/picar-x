@@ -1,0 +1,37 @@
+Help on function __init__ in module robot_hat.servos.servo:
+
+____iinniitt____(
+    self,
+    driver: robot_hat.interfaces.pwm_driver_abc.PWMDriverABC,
+    channel: Union[int, str],
+    min_angle: float = -90.0,
+    max_angle: float = 90.0,
+    min_pulse: int = 500,
+    max_pulse: int = 2500,
+    real_min_angle: float = -90.0,
+    real_max_angle: float = 90.0
+) -> None
+    Initialize a Servo instance with the given PWM driver and configuration parameters.
+
+    Parameters:
+        `driver`:
+            A PWM driver instance implementing the required interface to control pulse widths.
+        `channel`:
+            The identifier of the PWM channel to which the servo is
+            connected. This can be an integer or a string ending with
+            digits; if a string is provided, the trailing numeric part is
+            used as the channel number, for example, P2 means channel 2.
+        `min_angle`:
+            The minimum logical angle (in degrees) that can be commanded to the servo.
+        `max_angle`:
+            The maximum logical angle (in degrees) that can be commanded to the servo.
+        `min_pulse`:
+            The minimum pulse width (in microseconds) corresponding to the servo's physical movement.
+        `max_pulse`:
+            The maximum pulse width (in microseconds) corresponding to the servo's physical movement.
+        `real_min_angle`:
+            The minimum physical angle (in degrees) that the servo can achieve. This value is used in
+            the mapping from the logical angle to the physical angle.
+        `real_max_angle`:
+            The maximum physical angle (in degrees) that the servo can achieve. This value is used in
+            the mapping from the logical angle to the physical angle.

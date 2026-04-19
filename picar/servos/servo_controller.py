@@ -7,24 +7,26 @@ import threading
 from typing import Optional
 import sys
 from pathlib import Path
+import inspect
 
 # Add config to path
 config_path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(config_path))
 
 from config.config import (
-    SERVO_PAN_CHANNEL, SERVO_TILT_CHANNEL,
+    SERVO_PAN_PIN, SERVO_TILT_PIN,
     SERVO_MIN_ANGLE, SERVO_MAX_ANGLE
 )
 
 try:
-    import board
-    import busio
-    from adafruit_pca9685 import PCA9685
-    HARDWARE_AVAILABLE = True
+    from robot_hat import Servo, PWMFactory, PWMDriverConfig
+    ROBOT_HAT_AVAILABLE = True
 except ImportError:
-    HARDWARE_AVAILABLE = False
-    print("Warning: Adafruit PCA9685 not available - running in simulation mode")
+    ROBOT_HAT_AVAILABLE = False
+
+HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
+if not ROBOT_HAT_AVAILABLE:
+    print("Warning: robot_hat not available - running in simulation mode")
 
 
 class ServoController:
@@ -34,24 +36,53 @@ class ServoController:
         """Initialize servo controller"""
         self.pan_angle = 0
         self.tilt_angle = 0
-        self.pca = None
+        self.pan_servo = None
+        self.tilt_servo = None
+        self.pwm_driver = None
         self.lock = threading.Lock()
         self.initialized = False
         
         if HARDWARE_AVAILABLE:
-            self._init_pca9685()
+            self._init_servos()
     
-    def _init_pca9685(self):
-        """Initialize PCA9685 servo driver"""
+    def _init_servos(self):
+        """Initialize robot_hat Servos"""
         try:
-            i2c = busio.I2C(board.SCL, board.SDA)
-            self.pca = PCA9685(i2c)
-            self.pca.frequency = 50  # 50 Hz for servo control
+            servo_init_params = inspect.signature(Servo.__init__).parameters
+            is_new_api = "driver" in servo_init_params and "channel" in servo_init_params
+
+            if is_new_api:
+                # robot-hat v2.3+ API: Servo(driver=..., channel=...)
+                pwm_config = PWMDriverConfig(
+                    address=0x14,
+                    name="Sunfounder",
+                    bus=1,
+                    frame_width=20000,
+                    freq=50,
+                )
+                self.pwm_driver = PWMFactory.create_pwm_driver(pwm_config)
+                self.pwm_driver.set_pwm_freq(50)
+                self.pan_servo = Servo(driver=self.pwm_driver, channel=SERVO_PAN_PIN)
+                self.tilt_servo = Servo(driver=self.pwm_driver, channel=SERVO_TILT_PIN)
+            else:
+                # Legacy API compatibility: Servo(channel)
+                pan_channel = int(SERVO_PAN_PIN[1:])
+                tilt_channel = int(SERVO_TILT_PIN[1:])
+                self.pan_servo = Servo(pan_channel)
+                self.tilt_servo = Servo(tilt_channel)
+
             self.initialized = True
             print("Servo controller initialized successfully")
         except Exception as e:
-            print(f"Error initializing PCA9685: {e}")
-            self.pca = None
+            print(f"Error initializing servos: {e}")
+            self.pan_servo = None
+            self.tilt_servo = None
+            if self.pwm_driver:
+                try:
+                    self.pwm_driver.close()
+                except Exception:
+                    pass
+            self.pwm_driver = None
     
     def set_pan(self, angle: int) -> None:
         """
@@ -64,8 +95,8 @@ class ServoController:
             angle = max(SERVO_MIN_ANGLE, min(SERVO_MAX_ANGLE, angle))
             self.pan_angle = angle
             
-            if HARDWARE_AVAILABLE and self.initialized and self.pca:
-                self._apply_angle(SERVO_PAN_CHANNEL, angle)
+            if HARDWARE_AVAILABLE and self.initialized and self.pan_servo:
+                self._apply_pan_angle()
     
     def set_tilt(self, angle: int) -> None:
         """
@@ -78,8 +109,8 @@ class ServoController:
             angle = max(SERVO_MIN_ANGLE, min(SERVO_MAX_ANGLE, angle))
             self.tilt_angle = angle
             
-            if HARDWARE_AVAILABLE and self.initialized and self.pca:
-                self._apply_angle(SERVO_TILT_CHANNEL, angle)
+            if HARDWARE_AVAILABLE and self.initialized and self.tilt_servo:
+                self._apply_tilt_angle()
     
     def set_position(self, pan: int, tilt: int) -> None:
         """
@@ -92,20 +123,19 @@ class ServoController:
         self.set_pan(pan)
         self.set_tilt(tilt)
     
-    def _apply_angle(self, channel: int, angle: int):
-        """Apply servo angle using PWM pulse width"""
-        # Convert angle (-90 to 90) to pulse width (1000 to 2000 microseconds at 50Hz)
-        # Center position (0°) = 1500 microseconds (7.5% duty cycle)
-        # Min position (-90°) = 1000 microseconds (5% duty cycle)
-        # Max position (90°) = 2000 microseconds (10% duty cycle)
-        
-        pulse_width = 1500 + (angle * 5.55)  # 5.55 microseconds per degree
-        duty_cycle = (pulse_width / 20000) * 65535  # Convert to PCA9685 value
-        
+    def _apply_pan_angle(self):
+        """Apply pan angle to servo"""
         try:
-            self.pca.channels[channel].duty_cycle = int(duty_cycle)
+            self.pan_servo.angle(self.pan_angle)
         except Exception as e:
-            print(f"Error setting servo: {e}")
+            print(f"Error setting pan servo: {e}")
+    
+    def _apply_tilt_angle(self):
+        """Apply tilt angle to servo"""
+        try:
+            self.tilt_servo.angle(self.tilt_angle)
+        except Exception as e:
+            print(f"Error setting tilt servo: {e}")
     
     def center(self) -> None:
         """Center both pan and tilt"""
@@ -113,9 +143,11 @@ class ServoController:
     
     def cleanup(self):
         """Cleanup servo resources"""
-        if self.pca:
+        if HARDWARE_AVAILABLE and self.initialized:
             try:
                 self.center()
+                if self.pwm_driver:
+                    self.pwm_driver.close()
                 print("Servo controller cleaned up")
             except Exception as e:
                 print(f"Error cleaning up servos: {e}")

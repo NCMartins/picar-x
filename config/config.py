@@ -3,21 +3,20 @@ Configuration for PiCar-X
 """
 
 # Hardware Configuration
-# Motor pins (BCM numbering)
-MOTOR_LEFT_FORWARD = 17
-MOTOR_LEFT_BACKWARD = 18
-MOTOR_RIGHT_FORWARD = 27
-MOTOR_RIGHT_BACKWARD = 22
+# Motor pins (using robot-hat naming)
+MOTOR_LEFT = "M1"  # Left motor
+MOTOR_RIGHT = "M2"  # Right motor
 
-# PWM Configuration
-PWM_FREQUENCY = 1000  # 1 kHz
-MAX_SPEED = 100  # 0-100%
+# Servo pins (using robot-hat naming)
+SERVO_PAN_PIN = "P0"  # Pan servo
+SERVO_TILT_PIN = "P1"  # Tilt servo
 
-# Servo Configuration (using PCA9685 or similar)
-SERVO_PAN_CHANNEL = 0
-SERVO_TILT_CHANNEL = 1
+# Servo Configuration
 SERVO_MIN_ANGLE = -90
 SERVO_MAX_ANGLE = 90
+
+# Motor Configuration
+MAX_SPEED = 100  # 0-100%
 
 # Camera Configuration
 CAMERA_RESOLUTION = (640, 480)
