@@ -31,43 +31,56 @@ picar-x/
 
 ## 🚀 Quick Start (Raspberry Pi)
 
-### 1. Install uv
+### 1. **Complete Raspberry Pi OS Setup**
 
+See **[docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)** for:
+- Downloading and flashing Raspberry Pi OS
+- Initial boot configuration
+- Enabling I2C and Camera interfaces
+- Network and SSH setup
+- Hardware verification
+
+**Quick steps**:
 ```bash
-# Fast Python package manager (written in Rust)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-export PATH="$HOME/.cargo/bin:$PATH"
+# 1. Download Raspberry Pi Imager
+#    https://www.raspberrypi.com/software/
+# 2. Flash microSD card with Raspberry Pi OS (64-bit)
+# 3. Boot Raspberry Pi and enable interfaces via raspi-config
+# 4. Update system
+sudo apt-get update && sudo apt-get upgrade -y
 ```
 
-### 2. Copy to Raspberry Pi
+### 2. Clone & Setup PiCar-X
 ```bash
-# From your PC/Mac
-scp -r picar-x pi@<your-pi-ip>:~
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Or clone from GitHub after pushing
+# Clone repository
+mkdir -p ~/projects
+cd ~/projects
 git clone <your-repo-url> picar-x
 cd picar-x
+
+# Sync dependencies
+uv sync --python 3.9
 ```
 
-### 3. Setup on Raspberry Pi
+### 3. Run the Server
 ```bash
-# Enable interfaces
-sudo raspi-config
-# → Interface Options → I2C → Yes
-# → Interface Options → Camera → Yes
-# → Finish & Reboot
-
-# Sync dependencies with uv
-uv sync --python 3.9
-
-# Run the server
+# Start server
 uv run python backend/app.py
+
+# Or use launcher script
+chmod +x start.sh
+./start.sh
 ```
 
 ### 4. Access Web Interface
 ```
 http://<your-pi-ip>:5000
 ```
+
+Example: `http://192.168.1.100:5000`
 
 ## 🎮 Features
 

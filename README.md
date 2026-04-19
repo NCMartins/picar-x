@@ -65,15 +65,22 @@ picar/
 
 ### 1. Setup Raspberry Pi OS
 
+**Complete step-by-step guide**: See [RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)
+
+Quick summary:
 ```bash
+# Download Raspberry Pi OS using Raspberry Pi Imager
+# https://www.raspberrypi.com/software/
+
+# Enable required interfaces:
+sudo raspi-config
+# → Interface Options → I2C → Enable
+# → Interface Options → Camera → Enable
+# → Finish & Reboot
+
 # Update system
 sudo apt-get update
-sudo apt-get upgrade
-
-# Enable I2C and Camera
-sudo raspi-config
-# Navigate to Interface Options → I2C → Enable
-# Navigate to Interface Options → Camera → Enable
+sudo apt-get upgrade -y
 ```
 
 ### 2. Install uv (Fast Python Package Manager)
@@ -334,7 +341,13 @@ Private Repository
 
 ## Support & Documentation
 
-For detailed setup instructions and troubleshooting, see `/docs`
+Complete documentation available in `/docs`:
+
+- **[docs/INDEX.md](docs/INDEX.md)** - Documentation index (start here!)
+- **[docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)** - Complete Raspberry Pi OS setup guide ⭐
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical architecture & design patterns
+- **[docs/SETUP.md](docs/SETUP.md)** - Installation & troubleshooting
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick reference guide
 
 ---
 

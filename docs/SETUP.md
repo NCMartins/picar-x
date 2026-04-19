@@ -1,48 +1,83 @@
 # Setup & Installation Guide
 
+## ⚠️ Prerequisites
+
+- **Raspberry Pi 4B** with 4GB+ RAM
+- **MicroSD card** 32GB+ (Class 10)
+- **PiCar-X kit** from Sunfounder
+- **Camera module** (Pi Camera V2 or V3)
+- **Internet connection** for dependency installation
+- **USB-C power supply** (5V/3A minimum)
+
 ## Quick Start
 
-### Prerequisites
-- Raspberry Pi 4B with Raspberry Pi OS (32-bit or 64-bit)
-- PiCar-X kit from Sunfounder
-- Camera module (Pi Camera V2 or V3)
-- Internet connection for dependency installation
-- USB keyboard/mouse or SSH access
+### Step 1: Setup Raspberry Pi OS
 
-### Step 1: Enable Interfaces
+**For complete step-by-step instructions**, see **[RASPI_OS_SETUP.md](RASPI_OS_SETUP.md)**
 
+This includes:
+- Downloading Raspberry Pi OS
+- Writing to microSD card
+- Initial boot configuration
+- Enabling I2C and Camera
+- Network setup
+- SSH configuration
+- Hardware verification
+
+**Quick reference**:
 ```bash
+# 1. Download Raspberry Pi Imager
+https://www.raspberrypi.com/software/
+
+# 2. Write OS to microSD card
+# 3. Boot Raspberry Pi
+# 4. Enable interfaces
 sudo raspi-config
-```
+# → Interface Options → I2C → Yes
+# → Interface Options → Camera → Yes
+# → Finish & Reboot
 
-Navigate to:
-1. Interface Options → I2C → Yes (Enable)
-2. Interface Options → Camera → Yes (Enable)
-3. Interface Options → SSH → Yes (Enable) [Optional, for remote access]
-4. Finish and reboot
-
-### Step 2: Update System
-
-```bash
+# 5. Update system
 sudo apt-get update
 sudo apt-get upgrade -y
 ```
 
-### Step 3: Install uv (Fast Python Package Manager)
+### Step 2: Install Required Packages
+
+### Step 3: Install System Dependencies
+
+```bash
+sudo apt-get install -y \
+    build-essential \
+    git \
+    curl \
+    i2c-tools \
+    python3-dev \
+    libatlas-base-dev \
+    libjasper-dev \
+    libtiff5 \
+    libcamera-tools
+```
+
+### Step 4: Install uv (Fast Python Package Manager)
 
 uv is a blazing-fast Python package installer written in Rust:
 
 ```bash
 # Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
+curl -LsS5: Clone Repository
 
-# Add to PATH if needed
-export PATH="$HOME/.cargo/bin:$PATH"
+```bash
+# Create projects directory
+mkdir -p ~/projects
+cd ~/projects
 
-# Verify installation
-uv --version
+# Clone repository
+git clone <your-repo-url> picar-x
+cd picar-x
 ```
 
+### Step 6
 **Why uv?**
 - ⚡ 10-100x faster than pip
 - 🔒 Dependency resolution with conflict detection
@@ -63,7 +98,30 @@ cd picar-x
 # Sync all dependencies (creates .venv automatically)
 uv sync --python 3.9
 
-# Verify installation
+# Verify insConfigure Hardware Pins (If Needed)
+
+Verify GPIO pin assignments match your setup:
+
+```bash
+nano ~/projects/picar-x/config/config.py
+```
+
+Check these values:
+```python
+# Motor pins (BCM numbering)
+MOTOR_LEFT_FORWARD = 17
+MOTOR_LEF9_BACKWARD = 18
+MOTOR_RIGHT_FORWARD = 27
+MOTOR_RIGHT_BACKWARD = 22
+
+# Servo channels (PCA9685)
+SERVO_PAN_CHANNEL = 0
+SERVO_TILT_CHANNEL = 1
+```
+
+Adjust if your wiring is different.
+
+### Step 8: tallation
 uv pip list
 ```
 

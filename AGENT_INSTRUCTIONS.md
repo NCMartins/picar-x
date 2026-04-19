@@ -43,10 +43,13 @@ Raspberry Pi Hardware
 | `frontend/templates/index.html` | Web UI template |
 | `frontend/static/control.js` | Client-side API calls & keyboard control |
 | `frontend/static/style.css` | Responsive styling |
-| `requirements.txt` | Python dependencies |
+| `requirements.txt` | Python dependencies (for compatibility) |
+| `pyproject.toml` | Modern Python project setup (primary) |
 | `README.md` | Project documentation |
+| `docs/RASPI_OS_SETUP.md` | **Complete Raspberry Pi OS setup guide** |
 | `docs/ARCHITECTURE.md` | Architecture & design patterns |
 | `docs/SETUP.md` | Installation & troubleshooting |
+| `QUICKSTART.md` | Quick reference guide |
 
 ## Development Guidelines
 
@@ -100,6 +103,21 @@ Each hardware component is a separate module:
 **Health**: `GET /api/health`
 
 ## Common Tasks
+
+## Common Tasks
+
+### Task: Initial Raspberry Pi Setup
+1. Follow **[docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)** completely
+2. Verify interfaces enabled: I2C, Camera, GPIO
+3. Update system packages
+4. Test hardware connections
+
+### Task: Deploy PiCar-X to Raspberry Pi
+1. Clone repository on Raspberry Pi
+2. Run `uv sync --python 3.9`
+3. Verify GPIO pins in `config/config.py`
+4. Test with `uv run python backend/app.py`
+5. Setup auto-start service (optional)
 
 ### Task: Add Manual Control Slider
 1. Update `frontend/static/control.js` - add slider input handler
