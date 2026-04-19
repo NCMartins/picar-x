@@ -31,31 +31,40 @@ picar-x/
 
 ## 🚀 Quick Start (Raspberry Pi)
 
-### 1. Copy to Raspberry Pi
+### 1. Install uv
+
+```bash
+# Fast Python package manager (written in Rust)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+### 2. Copy to Raspberry Pi
 ```bash
 # From your PC/Mac
 scp -r picar-x pi@<your-pi-ip>:~
 
 # Or clone from GitHub after pushing
 git clone <your-repo-url> picar-x
+cd picar-x
 ```
 
-### 2. Setup on Raspberry Pi
+### 3. Setup on Raspberry Pi
 ```bash
-cd ~/picar-x
-
 # Enable interfaces
 sudo raspi-config
 # → Interface Options → I2C → Yes
 # → Interface Options → Camera → Yes
 # → Finish & Reboot
 
-# Install dependencies
-chmod +x start.sh
-./start.sh
+# Sync dependencies with uv
+uv sync --python 3.9
+
+# Run the server
+uv run python backend/app.py
 ```
 
-### 3. Access Web Interface
+### 4. Access Web Interface
 ```
 http://<your-pi-ip>:5000
 ```
@@ -144,7 +153,8 @@ MAX_SPEED = 100  # 0-100%
 Everything works in simulation mode:
 ```bash
 # On any computer (no Raspberry Pi needed)
-python backend/app.py
+uv sync --python 3.9
+uv run python backend/app.py
 ```
 
 Then navigate to `http://localhost:5000` - all controls respond but don't require hardware.
@@ -234,6 +244,55 @@ git push -u origin main
 git add .
 git commit -m "description"
 git push
+```
+
+## 📦 Dependency Management with uv
+
+### Why uv over pip/venv?
+
+| Feature | pip/venv | uv |
+|---------|----------|-----|
+| Speed | ⚠️ Slow | ⚡ 10-100x faster |
+| Installation | Manual steps | Single command |
+| Lock files | No | ✓ Yes (uv.lock) |
+| Conflict detection | Basic | ✓ Advanced |
+| Virtual environment | Manual | ✓ Automatic (.venv) |
+
+### Common uv Commands
+
+```bash
+# Sync dependencies (install/update)
+uv sync --python 3.9
+
+# Add a new dependency
+uv add flask-restful
+
+# Update a dependency
+uv update flask
+
+# Run commands in virtual environment
+uv run python app.py
+uv run python -m pytest
+
+# Install dev dependencies
+uv sync --all-extras
+
+# View installed packages
+uv pip list
+```
+
+### Configuration
+
+Settings are in `pyproject.toml`:
+```toml
+[project]
+dependencies = [
+    "flask==2.3.0",
+    # ...
+]
+
+[project.optional-dependencies]
+dev = ["pytest==7.4.0", "black==23.7.0"]
 ```
 
 ## 💡 Pro Tips

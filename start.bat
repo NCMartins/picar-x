@@ -1,10 +1,10 @@
 @echo off
-REM PiCar-X Quick Start Script for Windows/Development
+REM PiCar-X Quick Start Script for Windows/Development using uv
 
 setlocal enabledelayedexpansion
 
 echo ==========================================
-echo PiCar-X Setup ^& Launch Script
+echo PiCar-X Setup ^& Launch Script (uv)
 echo ==========================================
 echo.
 
@@ -14,31 +14,17 @@ set PROJECT_DIR=%~dp0
 echo Project directory: %PROJECT_DIR%
 echo.
 
-REM Check Python installation
-python --version >nul 2>&1
+REM Check if uv is installed
+uv --version >nul 2>&1
 if errorlevel 1 (
-    echo Python is not installed or not in PATH
-    echo Please install Python 3 from https://www.python.org/
-    pause
-    exit /b 1
+    echo uv not found. Installing uv...
+    powershell -Command "irm https://astral.sh/uv/install.ps1 | iex"
+    setx PATH "%APPDATA%\Python\Scripts;%PATH%"
 )
 
-REM Create virtual environment if it doesn't exist
-if not exist "%PROJECT_DIR%venv\" (
-    echo Creating virtual environment...
-    python -m venv "%PROJECT_DIR%venv"
-)
-
-REM Activate virtual environment
-echo Activating virtual environment...
-call "%PROJECT_DIR%venv\Scripts\activate.bat"
-
-REM Install requirements
-if exist "%PROJECT_DIR%requirements.txt" (
-    echo Installing dependencies...
-    python -m pip install --upgrade pip setuptools wheel
-    pip install -r "%PROJECT_DIR%requirements.txt"
-)
+REM Sync dependencies using uv
+echo Syncing dependencies with uv...
+call uv sync --python 3.9
 
 REM Navigate to backend and start server
 echo.
@@ -47,6 +33,6 @@ echo Access the web interface at: http://localhost:5000
 echo.
 
 cd /d "%PROJECT_DIR%backend"
-python app.py
+call uv run python app.py
 
 pause

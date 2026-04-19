@@ -28,25 +28,26 @@ sudo apt-get update
 sudo apt-get upgrade -y
 ```
 
-### Step 3: Install Dependencies
+### Step 3: Install uv (Fast Python Package Manager)
+
+uv is a blazing-fast Python package installer written in Rust:
 
 ```bash
-# Install system packages
-sudo apt-get install -y \
-    python3-pip \
-    python3-dev \
-    python3-venv \
-    git \
-    libatlas-base-dev \
-    libjasper-dev \
-    libtiff5 \
-    libcamera-tools \
-    python3-libcamera \
-    python3-kms++
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# For I2C communication
-sudo apt-get install -y i2c-tools python3-smbus
+# Add to PATH if needed
+export PATH="$HOME/.cargo/bin:$PATH"
+
+# Verify installation
+uv --version
 ```
+
+**Why uv?**
+- ⚡ 10-100x faster than pip
+- 🔒 Dependency resolution with conflict detection
+- 📦 Automatic virtual environment management
+- 🐍 Works with any Python version
 
 ### Step 4: Clone Repository
 
@@ -56,18 +57,14 @@ git clone <your-repo-url>
 cd picar-x
 ```
 
-### Step 5: Setup Python Virtual Environment
+### Step 5: Sync Dependencies with uv
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-```
+# Sync all dependencies (creates .venv automatically)
+uv sync --python 3.9
 
-### Step 6: Install Python Dependencies
-
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+# Verify installation
+uv pip list
 ```
 
 ### Step 7: Verify Camera
@@ -120,13 +117,25 @@ Default PCA9685 address: `0x40` (verify with `i2cdetect`)
 
 ## Starting the Server
 
-### Option 1: Direct Execution
+### Option 1: Quick Start with uv
 
 ```bash
-cd ~/picar-x
-source venv/bin/activate
-cd backend
-python app.py
+# Sync dependencies (one-time setup)
+uv sync --python 3.9
+
+# Run server
+uv run python backend/app.py
+```
+
+### Option 2: Using Launch Scripts
+
+```bash
+# Linux/Raspberry Pi
+chmod +x start.sh
+./start.sh
+
+# Windows
+start.bat
 ```
 
 Expected output:
@@ -137,7 +146,7 @@ Camera initialized successfully
 Starting Flask server on 0.0.0.0:5000
 ```
 
-### Option 2: Run as Service (Autostart)
+### Option 3: Run as Service (Autostart)
 
 Create systemd service:
 
@@ -145,7 +154,7 @@ Create systemd service:
 sudo nano /etc/systemd/system/picar.service
 ```
 
-Add the following:
+Add the following (adjust path to your installation):
 
 ```ini
 [Unit]
@@ -155,8 +164,9 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/picar-x/backend
-ExecStart=/home/pi/picar-x/venv/bin/python app.py
+WorkingDirectory=/home/pi/picar-x
+ExecStart=/home/pi/.cargo/bin/uv run python backend/app.py
+Environment="PATH=/home/pi/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 Restart=always
 RestartSec=5
 
@@ -213,10 +223,23 @@ sudo ufw allow 5000/udp
 
 ## Testing the System
 
-### Test Motors
+### Test with uv
 
-```python
-python3
+```bash
+# Run Python commands with uv
+uv run python3 <<'EOF'
+from picar.motors import get_motor_controller
+motor = get_motor_controller()
+motor.forward(speed=50)
+import time; time.sleep(2)
+motor.stop()
+EOF
+```
+
+Or create interactive Python session:
+
+```bash
+uv run python3
 >>> from picar.motors import get_motor_controller
 >>> motor = get_motor_controller()
 >>> motor.forward(speed=50)
@@ -227,8 +250,8 @@ python3
 
 ### Test Servos
 
-```python
-python3
+```bash
+uv run python3
 >>> from picar.servos import get_servo_controller
 >>> servo = get_servo_controller()
 >>> servo.set_pan(45)
@@ -238,8 +261,8 @@ python3
 
 ### Test Camera
 
-```python
-python3
+```bash
+uv run python3
 >>> from picar.camera import get_camera_stream
 >>> camera = get_camera_stream()
 >>> frame = camera.get_frame()

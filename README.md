@@ -2,6 +2,8 @@
 
 A modular Python-based web interface for controlling the Sunfounder PiCar-X robot on Raspberry Pi 4B. Stream live video, control movement, and adjust camera position remotely.
 
+**Fast setup with [uv](https://astral.sh/blog/introducing-uv/) - a blazing-fast Python package manager**
+
 ## Features
 
 ✨ **Core Capabilities:**
@@ -74,24 +76,48 @@ sudo raspi-config
 # Navigate to Interface Options → Camera → Enable
 ```
 
-### 2. Clone Repository
+### 2. Install uv (Fast Python Package Manager)
+
+```bash
+# Install uv
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add to PATH if needed
+export PATH="$HOME/.cargo/bin:$PATH"
+```
+
+### 3. Clone Repository
 
 ```bash
 git clone <your-repo-url> picar-x
 cd picar-x
 ```
 
-### 3. Create Virtual Environment
+### 4. Sync Dependencies with uv
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Sync all dependencies (creates virtual environment automatically)
+uv sync --python 3.9
 ```
 
-### 4. Install Dependencies
+### 5. Run the Server
 
 ```bash
-pip install -r requirements.txt
+# Linux/macOS
+uv run python backend/app.py
+
+# Windows
+uv run python backend\app.py
+```
+
+Or use the provided launcher scripts:
+```bash
+chmod +x start.sh
+./start.sh  # Linux/macOS
+```
+
+```batch
+start.bat   # Windows
 ```
 
 ### 5. Configure Hardware
@@ -112,14 +138,24 @@ SERVO_TILT_CHANNEL = 1
 
 ## Usage
 
-### Start the Server
+### Start the Server with uv
 
 ```bash
-cd backend
-python app.py
+# Sync dependencies (one-time)
+uv sync --python 3.9
+
+# Run server
+uv run python backend/app.py
 ```
 
-Server will start on `http://0.0.0.0:5000`
+Or use the launcher script:
+```bash
+# Linux/macOS
+./start.sh
+
+# Windows
+start.bat
+```
 
 ### Access Web Interface
 
