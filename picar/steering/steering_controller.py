@@ -2,6 +2,7 @@
 
 import inspect
 import threading
+import json
 import sys
 from pathlib import Path
 
@@ -29,13 +30,36 @@ class SteeringController:
 
     def __init__(self):
         self.angle = STEERING_CENTER_ANGLE
+        self.calibration_offset = 0
+        self._calibration_file = Path(__file__).parent.parent.parent / 'config' / 'steering_calibration.json'
         self.servo = None
         self.pwm_driver = None
         self.lock = threading.Lock()
         self.initialized = False
+        self._load_calibration()
 
         if HARDWARE_AVAILABLE:
             self._init_servo()
+
+    def _load_calibration(self) -> None:
+        """Load steering calibration offset from disk if present."""
+        try:
+            if self._calibration_file.exists():
+                with self._calibration_file.open('r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.calibration_offset = int(data.get('offset', 0))
+        except Exception as e:
+            print(f"Warning: failed to load steering calibration: {e}")
+            self.calibration_offset = 0
+
+    def _save_calibration(self) -> None:
+        """Persist steering calibration offset to disk."""
+        try:
+            self._calibration_file.parent.mkdir(parents=True, exist_ok=True)
+            with self._calibration_file.open('w', encoding='utf-8') as f:
+                json.dump({'offset': self.calibration_offset}, f, indent=2)
+        except Exception as e:
+            print(f"Warning: failed to save steering calibration: {e}")
 
     def _init_servo(self):
         """Initialize steering servo with robot-hat API compatibility."""
@@ -76,11 +100,27 @@ class SteeringController:
         with self.lock:
             clamped = max(STEERING_MIN_ANGLE, min(STEERING_MAX_ANGLE, angle))
             self.angle = clamped
+            physical_angle = max(
+                STEERING_MIN_ANGLE,
+                min(STEERING_MAX_ANGLE, self.angle + self.calibration_offset),
+            )
             if HARDWARE_AVAILABLE and self.initialized and self.servo:
                 try:
-                    self.servo.angle(self.angle)
+                    self.servo.angle(physical_angle)
                 except Exception as e:
                     print(f"Error setting steering angle: {e}")
+
+    def set_calibration_offset(self, offset: int) -> None:
+        """Set and persist calibration offset used for all steering positions."""
+        with self.lock:
+            self.calibration_offset = int(offset)
+            self._save_calibration()
+        # Re-apply current logical angle using the new offset.
+        self.set_angle(self.angle)
+
+    def reset_calibration(self) -> None:
+        """Reset steering calibration offset to zero and persist."""
+        self.set_calibration_offset(0)
 
     def center(self) -> None:
         """Center steering."""

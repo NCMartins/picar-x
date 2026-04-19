@@ -100,7 +100,35 @@ def steering_center():
 @app.route('/api/steering/status', methods=['GET'])
 def steering_status():
     """Get current steering angle."""
-    return jsonify({'angle': steering_ctrl.angle})
+    return jsonify({
+        'angle': steering_ctrl.angle,
+        'calibration_offset': steering_ctrl.calibration_offset,
+    })
+
+
+@app.route('/api/steering/calibration', methods=['GET'])
+def steering_calibration_status():
+    """Get current steering calibration offset."""
+    return jsonify({'offset': steering_ctrl.calibration_offset})
+
+
+@app.route('/api/steering/calibration', methods=['POST'])
+def steering_set_calibration():
+    """Set steering calibration offset."""
+    offset = request.json.get('offset', 0)
+    steering_ctrl.set_calibration_offset(int(offset))
+    return jsonify({
+        'status': 'success',
+        'offset': steering_ctrl.calibration_offset,
+        'angle': steering_ctrl.angle,
+    })
+
+
+@app.route('/api/steering/calibration/reset', methods=['POST'])
+def steering_reset_calibration():
+    """Reset steering calibration offset to 0."""
+    steering_ctrl.reset_calibration()
+    return jsonify({'status': 'success', 'offset': steering_ctrl.calibration_offset})
 
 
 # ==================== Servo Routes ====================
@@ -195,6 +223,13 @@ def index():
     """Serve main page"""
     from flask import render_template
     return render_template('index.html')
+
+
+@app.route('/steering-calibration')
+def steering_calibration_page():
+    """Serve steering calibration page."""
+    from flask import render_template
+    return render_template('steering_calibration.html')
 
 
 # ==================== Error Handling ====================

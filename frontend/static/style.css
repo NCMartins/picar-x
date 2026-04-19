@@ -53,6 +53,25 @@ header h1 {
     font-size: 1.1em;
 }
 
+.header-actions {
+    margin-top: 15px;
+}
+
+.btn-link {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.btn-link:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
 .status-indicator {
     display: inline-flex;
     align-items: center;
@@ -389,6 +408,44 @@ section h3 {
 
 .btn-small:active {
     transform: scale(0.95);
+}
+
+/* ===== Steering Calibration Page ===== */
+.calibration-page {
+    max-width: 860px;
+}
+
+.calibration-main {
+    grid-template-columns: 1fr;
+}
+
+.calibration-help {
+    color: #4b5563;
+    margin-bottom: 14px;
+}
+
+.calibration-value {
+    font-size: 1.25em;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 12px;
+}
+
+.calibration-slider-wrap {
+    background: white;
+    padding: 18px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.calibration-slider-wrap input[type="range"] {
+    width: 100%;
+}
+
+.calibration-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* ===== Footer ===== */

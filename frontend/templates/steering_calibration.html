@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PiCar-X Steering Calibration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container calibration-page">
+        <header>
+            <h1>Steering Wheel Calibration</h1>
+            <div class="status-bar">
+                <span id="status" class="status-indicator">● Connecting...</span>
+                <span id="steering-now">Current Angle: 0°</span>
+            </div>
+            <div class="header-actions">
+                <a class="btn-link" href="/">Back to Control</a>
+            </div>
+        </header>
+
+        <main class="calibration-main">
+            <section>
+                <h2>Center Offset</h2>
+                <p class="calibration-help">
+                    If the wheels are not straight when centered, adjust this offset,
+                    then save. Positive values shift right, negative values shift left.
+                </p>
+
+                <div class="calibration-value">
+                    Offset: <span id="offset-value">0</span>°
+                </div>
+
+                <div class="calibration-slider-wrap">
+                    <input type="range" id="offset-slider" min="-30" max="30" value="0">
+                </div>
+
+                <div class="calibration-buttons">
+                    <button class="btn-small" id="decrease-offset">-1°</button>
+                    <button class="btn-small" id="increase-offset">+1°</button>
+                    <button class="btn-small" id="apply-offset">Apply & Save</button>
+                    <button class="btn-small" id="reset-offset">Reset</button>
+                </div>
+            </section>
+
+            <section>
+                <h2>Steering Test</h2>
+                <p class="calibration-help">
+                    Use these buttons to verify alignment after each adjustment.
+                </p>
+                <div class="calibration-buttons">
+                    <button class="btn-small" id="test-left">Turn Left</button>
+                    <button class="btn-small" id="test-center">Center</button>
+                    <button class="btn-small" id="test-right">Turn Right</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Tip: Adjust until wheels are mechanically straight at center.</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='steering_calibration.js') }}"></script>
+</body>
+</html>
