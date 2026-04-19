@@ -1,0 +1,41 @@
+# PiCar-X Ansible Variables
+# Customize these for your deployment
+
+# Repository settings
+picar_repo_url: "https://github.com/your-username/picar-x.git"
+picar_repo_branch: "main"
+picar_install_path: "/home/pi/projects/picar-x"
+
+# Network settings
+picar_static_ip: "192.168.1.100"
+picar_netmask: "24"
+picar_gateway: "192.168.1.1"
+picar_dns_servers:
+  - "8.8.8.8"
+  - "1.1.1.1"
+
+# Service settings
+picar_service_name: "picar"
+picar_service_description: "PiCar-X Control Server"
+picar_flask_host: "0.0.0.0"
+picar_flask_port: 5000
+
+# Hardware settings (adjust for your PiCar-X wiring)
+picar_motor_left_forward: 17
+picar_motor_left_backward: 18
+picar_motor_right_forward: 27
+picar_motor_right_backward: 22
+picar_servo_pan_channel: 0
+picar_servo_tilt_channel: 1
+picar_max_speed: 100
+picar_camera_resolution_width: 640
+picar_camera_resolution_height: 480
+picar_camera_framerate: 30
+
+# System settings
+picar_gpu_memory: 256
+picar_timezone: "America/New_York"  # Change to your timezone
+picar_hostname: "picar"
+
+# Python settings
+python_version: "3.9"

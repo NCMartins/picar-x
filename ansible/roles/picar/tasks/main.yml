@@ -1,0 +1,100 @@
+---
+# PiCar-X deployment tasks
+# Installs and configures PiCar-X application
+
+- name: Create projects directory
+  file:
+    path: /home/pi/projects
+    state: directory
+    owner: pi
+    group: pi
+    mode: '0755'
+
+- name: Clone PiCar-X repository
+  git:
+    repo: "{{ picar_repo_url }}"
+    dest: "{{ picar_install_path }}"
+    version: "{{ picar_repo_branch }}"
+    update: yes
+  become_user: pi
+
+- name: Configure PiCar-X settings
+  template:
+    src: config.py.j2
+    dest: "{{ picar_install_path }}/config/config.py"
+    owner: pi
+    group: pi
+    mode: '0644'
+
+- name: Sync Python dependencies with uv
+  command: "{{ ansible_env.HOME }}/.cargo/bin/uv sync --python {{ python_version }}"
+  args:
+    chdir: "{{ picar_install_path }}"
+  become_user: pi
+  environment:
+    PATH: "{{ ansible_env.PATH }}:{{ ansible_env.HOME }}/.cargo/bin"
+
+- name: Create systemd service
+  template:
+    src: picar.service.j2
+    dest: /etc/systemd/system/{{ picar_service_name }}.service
+    owner: root
+    group: root
+    mode: '0644'
+  notify: reload systemd
+
+- name: Enable and start PiCar-X service
+  systemd:
+    name: "{{ picar_service_name }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Wait for service to be healthy
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: "{{ picar_flask_port }}"
+    timeout: 60
+
+- name: Verify camera hardware
+  command: libcamera-hello --list-cameras
+  register: camera_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Set camera availability fact
+  set_fact:
+    camera_available: "{{ 'Available cameras' in camera_check.stdout }}"
+
+- name: Verify I2C servo driver
+  command: i2cdetect -y 1
+  register: i2c_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Set I2C availability fact
+  set_fact:
+    i2c_available: "{{ '40:' in i2c_check.stdout }}"
+
+- name: Verify GPIO access
+  command: python3 -c "import RPi.GPIO as GPIO; print('GPIO OK')"
+  register: gpio_check
+  ignore_errors: yes
+  changed_when: false
+
+- name: Set GPIO availability fact
+  set_fact:
+    gpio_available: "{{ 'GPIO OK' in gpio_check.stdout }}"
+
+- name: Display hardware verification results
+  debug:
+    msg: |
+      Hardware Verification Results:
+      ===============================
+      Camera: {{ '✓ Available' if camera_available else '✗ Not detected' }}
+      I2C Servo: {{ '✓ Available' if i2c_available else '✗ Not detected' }}
+      GPIO: {{ '✓ Available' if gpio_available else '✗ Not accessible' }}
+
+      Camera output: {{ camera_check.stdout | default('No output') }}
+      I2C output: {{ i2c_check.stdout | default('No output') }}
+      GPIO output: {{ gpio_check.stdout | default('No output') }}

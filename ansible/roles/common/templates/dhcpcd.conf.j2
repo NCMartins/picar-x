@@ -1,0 +1,10 @@
+interface eth0
+static ip_address={{ picar_static_ip }}/{{ picar_netmask }}
+static routers={{ picar_gateway }}
+static domain_name_servers={{ picar_dns_servers | join(' ') }}
+
+# WiFi static IP (uncomment and modify if using WiFi)
+# interface wlan0
+# static ip_address={{ picar_static_ip }}/{{ picar_netmask }}
+# static routers={{ picar_gateway }}
+# static domain_name_servers={{ picar_dns_servers | join(' ') }}

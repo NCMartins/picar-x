@@ -63,7 +63,29 @@ picar/
 
 ## Installation
 
-### 1. Setup Raspberry Pi OS
+### Option 1: Automated Deployment with Ansible (Recommended)
+
+For automated deployment to a fresh Raspberry Pi:
+
+1. **Setup Raspberry Pi OS**: Follow [RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)
+2. **Deploy with Ansible**: See [ansible/README.md](ansible/README.md)
+
+```bash
+# On your control machine (not the Pi)
+cd ansible
+ansible-playbook -i inventory.ini playbook.yml
+```
+
+This automatically:
+- Configures system settings and networking
+- Installs all dependencies
+- Deploys the PiCar-X application
+- Sets up systemd service for auto-start
+- Verifies hardware connectivity
+
+### Option 2: Manual Installation
+
+#### 1. Setup Raspberry Pi OS
 
 **Complete step-by-step guide**: See [RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)
 

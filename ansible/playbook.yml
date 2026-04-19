@@ -1,0 +1,48 @@
+---
+# PiCar-X Ansible Playbook
+# Deploys PiCar-X remote control system to Raspberry Pi
+
+- name: Deploy PiCar-X to Raspberry Pi
+  hosts: picar
+  become: yes
+  gather_facts: yes
+
+  pre_tasks:
+    - name: Update package cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      changed_when: false
+
+  roles:
+    - common
+    - picar
+
+  post_tasks:
+    - name: Display deployment summary
+      debug:
+        msg: |
+          ============================================
+          PiCar-X Deployment Complete!
+          ============================================
+
+          Web Interface: http://{{ ansible_default_ipv4.address }}:5000
+          SSH Access: ssh pi@{{ ansible_default_ipv4.address }}
+
+          Services:
+          - picar.service (auto-starts on boot)
+
+          Logs:
+          - sudo journalctl -u picar.service -f
+          - sudo journalctl -xe
+
+          Hardware Status:
+          - Camera: {{ '✓ Available' if camera_available | default(false) else '✗ Not detected' }}
+          - I2C Servo: {{ '✓ Available' if i2c_available | default(false) else '✗ Not detected' }}
+          - GPIO: {{ '✓ Available' if gpio_available | default(false) else '✗ Not accessible' }}
+
+          Next Steps:
+          1. Open http://{{ ansible_default_ipv4.address }}:5000 in browser
+          2. Test motor controls and camera
+          3. Adjust config/config.py if needed
+          ============================================

@@ -1,5 +1,26 @@
 # Setup & Installation Guide
 
+## 🚀 Deployment Options
+
+### Option 1: Automated Deployment (Recommended)
+
+For the fastest and most reliable setup, use the **Ansible playbook**:
+
+1. Setup Raspberry Pi OS: [RASPI_OS_SETUP.md](RASPI_OS_SETUP.md)
+2. Deploy automatically: [ansible/README.md](../ansible/README.md)
+
+```bash
+# On your control machine (not the Pi)
+cd ansible
+ansible-playbook -i inventory.ini playbook.yml
+```
+
+This handles everything automatically: system configuration, dependency installation, hardware setup, and service deployment.
+
+### Option 2: Manual Installation (Advanced)
+
+Follow the step-by-step manual installation below if you prefer hands-on control or need custom configuration.
+
 ## ⚠️ Prerequisites
 
 - **Raspberry Pi 4B** with 4GB+ RAM

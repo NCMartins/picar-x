@@ -20,7 +20,14 @@ Complete documentation for PiCar-X project setup, development, and deployment.
    - Auto-start service setup
    - ~45 minutes total time
 
-3. **[docs/SETUP.md](docs/SETUP.md)** - PiCar-X Installation
+3. **[ansible/README.md](ansible/README.md)** - Automated Deployment ⭐ **RECOMMENDED FOR DEPLOYMENT**
+   - Ansible playbook for automated setup
+   - Complete system configuration
+   - Hardware verification and testing
+   - Service deployment and management
+   - ~15 minutes total time (after OS setup)
+
+4. **[docs/SETUP.md](docs/SETUP.md)** - Manual PiCar-X Installation
    - System dependencies
    - uv installation and usage
    - Code repository setup
@@ -81,7 +88,8 @@ Instructions for GitHub Copilot and other AI assistants:
 |------|-----------------|
 | Get started quickly | [QUICKSTART.md](QUICKSTART.md) |
 | Setup Raspberry Pi OS | [docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md) |
-| Install PiCar-X on Pi | [docs/SETUP.md](docs/SETUP.md) |
+| Automated deployment | [ansible/README.md](ansible/README.md) |
+| Manual installation | [docs/SETUP.md](docs/SETUP.md) |
 | Understand architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | API reference | [README.md](README.md#api-endpoints) |
 | Troubleshoot issues | [docs/SETUP.md](docs/SETUP.md#troubleshooting) |
@@ -92,9 +100,9 @@ Instructions for GitHub Copilot and other AI assistants:
 
 | Role | Start Here |
 |------|-----------|
-| **User (want to use it)** | [QUICKSTART.md](QUICKSTART.md) → [docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md) |
+| **User (want to use it)** | [QUICKSTART.md](QUICKSTART.md) → [docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md) → [ansible/README.md](ansible/README.md) |
 | **Developer (fixing/extending)** | [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
-| **System Admin (deployment)** | [docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md) → [docs/SETUP.md](docs/SETUP.md) |
+| **System Admin (deployment)** | [docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md) → [ansible/README.md](ansible/README.md) |
 | **Maintainer (overall project)** | [README.md](README.md) → [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 
 ## 🔍 Key Sections

@@ -1,0 +1,92 @@
+---
+# Common system setup tasks
+# Updates system, configures network, enables interfaces
+
+- name: Update system packages
+  apt:
+    upgrade: dist
+    update_cache: yes
+
+- name: Install essential packages
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - vim
+      - htop
+      - build-essential
+      - python3-dev
+      - python3-pip
+      - libatlas-base-dev
+      - libjasper-dev
+      - libtiff5
+      - libcamera-tools
+      - i2c-tools
+      - raspi-config
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: "{{ picar_timezone }}"
+
+- name: Set hostname
+  hostname:
+    name: "{{ picar_hostname }}"
+
+- name: Update /etc/hosts with new hostname
+  lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1.*'
+    line: "127.0.1.1\t{{ picar_hostname }}"
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Configure static IP for Ethernet
+  template:
+    src: dhcpcd.conf.j2
+    dest: /etc/dhcpcd.conf
+    owner: root
+    group: netdev
+    mode: '0664'
+  notify: restart networking
+
+- name: Enable I2C interface
+  raspberrypi_config:
+    config:
+      dtparam=i2c_arm=on
+
+- name: Enable Camera interface
+  raspberrypi_config:
+    config:
+      start_x=1
+      gpu_mem="{{ picar_gpu_memory }}"
+
+- name: Enable SSH
+  raspberrypi_config:
+    config:
+      ssh=1
+
+- name: Add pi user to required groups
+  user:
+    name: pi
+    groups: gpio,i2c,video
+    append: yes
+
+- name: Install uv Python package manager
+  shell: |
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.bashrc
+    echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> /home/pi/.bashrc
+  args:
+    creates: ~/.cargo/bin/uv
+
+- name: Reboot system to apply interface changes
+  reboot:
+    msg: "Rebooting to apply Raspberry Pi interface configuration changes"
+    connect_timeout: 5
+    reboot_timeout: 300
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+  when: ansible_connection != 'local'

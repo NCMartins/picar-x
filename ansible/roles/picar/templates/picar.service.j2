@@ -1,0 +1,15 @@
+[Unit]
+Description={{ picar_service_description }}
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory={{ picar_install_path }}
+ExecStart={{ ansible_env.HOME }}/.cargo/bin/uv run python backend/app.py
+Environment="PATH={{ ansible_env.HOME }}/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

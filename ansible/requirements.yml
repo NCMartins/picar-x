@@ -1,0 +1,12 @@
+---
+# Ansible requirements for PiCar-X deployment
+# Install with: ansible-galaxy install -r requirements.yml
+
+collections:
+  - name: community.general
+    version: ">=8.0.0"
+  - name: ansible.posix
+    version: ">=1.5.0"
+
+roles:
+  # Add any required roles here
