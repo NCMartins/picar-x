@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PiCar-X Control</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚗 PiCar-X Remote Control</h1>
+            <div class="status-bar">
+                <span id="status" class="status-indicator">● Connecting...</span>
+                <span id="fps">FPS: 0</span>
+            </div>
+        </header>
+
+        <main>
+            <!-- Camera Stream Section -->
+            <section class="camera-section">
+                <h2>Camera Stream</h2>
+                <div class="camera-container">
+                    <img id="stream" src="/stream" alt="Live stream" class="stream-img">
+                    <div class="camera-controls">
+                        <button class="btn-small" onclick="moveCamera(-10, 0)">◀</button>
+                        <button class="btn-small" onclick="moveCamera(10, 0)">▶</button>
+                        <button class="btn-small" onclick="moveCamera(0, -10)">▲</button>
+                        <button class="btn-small" onclick="moveCamera(0, 10)">▼</button>
+                        <button class="btn-small" onclick="centerCamera()">⊙ Center</button>
+                    </div>
+                </div>
+                <div class="camera-position">
+                    <label>Pan: <span id="pan-value">0</span>°</label>
+                    <label>Tilt: <span id="tilt-value">0</span>°</label>
+                </div>
+            </section>
+
+            <!-- Motor Control Section -->
+            <section class="motor-section">
+                <h2>Movement Control</h2>
+                
+                <div class="joystick-container">
+                    <h3>Directional Control</h3>
+                    <div class="directional-buttons">
+                        <button class="btn-direction" onclick="moveForward()">▲</button>
+                    </div>
+                    <div class="directional-buttons">
+                        <button class="btn-direction" onclick="moveLeft()">◀</button>
+                        <button class="btn-direction btn-stop" onclick="stopMotors()">STOP</button>
+                        <button class="btn-direction" onclick="moveRight()">▶</button>
+                    </div>
+                    <div class="directional-buttons">
+                        <button class="btn-direction" onclick="moveBackward()">▼</button>
+                    </div>
+                </div>
+
+                <div class="speed-control">
+                    <label for="speed-slider">Speed: <span id="speed-value">50</span>%</label>
+                    <input type="range" id="speed-slider" min="0" max="100" value="50" 
+                           oninput="updateSpeedDisplay(this.value)">
+                </div>
+
+                <div class="motor-status">
+                    <h3>Motor Status</h3>
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <label>Left Motor</label>
+                            <span id="left-speed">0%</span>
+                        </div>
+                        <div class="status-item">
+                            <label>Right Motor</label>
+                            <span id="right-speed">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Advanced Controls -->
+            <section class="advanced-section">
+                <h2>Advanced Controls</h2>
+                
+                <div class="manual-speed-control">
+                    <h3>Manual Motor Control</h3>
+                    <div class="slider-group">
+                        <label for="left-slider">Left Motor: <span id="left-manual">0</span></label>
+                        <input type="range" id="left-slider" min="-100" max="100" value="0"
+                               oninput="setIndividualSpeed(this.value, document.getElementById('right-slider').value)">
+                    </div>
+                    <div class="slider-group">
+                        <label for="right-slider">Right Motor: <span id="right-manual">0</span></label>
+                        <input type="range" id="right-slider" min="-100" max="100" value="0"
+                               oninput="setIndividualSpeed(document.getElementById('left-slider').value, this.value)">
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>PiCar-X Control System | Powered by Flask + WebSockets</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='control.js') }}"></script>
+</body>
+</html>
