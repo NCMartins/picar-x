@@ -2,6 +2,11 @@
 
 A modular Python-based web interface for controlling the Sunfounder PiCar-X robot on Raspberry Pi 4B. Stream live video, control movement, and adjust camera position remotely.
 
+## Project Notes
+
+- This repository was vibecoded.
+- The Ansible deployment path is included, but it has not been tested yet.
+
 **Fast setup with [uv](https://astral.sh/blog/introducing-uv/) - a blazing-fast Python package manager**
 
 ## Features
@@ -9,6 +14,7 @@ A modular Python-based web interface for controlling the Sunfounder PiCar-X robo
 ✨ **Core Capabilities:**
 - 🎥 Live MJPEG camera streaming
 - 🎮 Real-time motor control (forward, backward, turn)
+- 🛞 Dedicated steering calibration page with persistent center offset
 - 📸 Pan/tilt camera servo control
 - 🌐 Web-based interface accessible from any browser
 - ⌨️ Keyboard control support (Arrow keys/WASD)
@@ -26,7 +32,8 @@ A modular Python-based web interface for controlling the Sunfounder PiCar-X robo
 ```
 picar/
 ├── config/
-│   └── config.py              # Centralized configuration
+│   ├── config.py              # Centralized configuration
+│   └── steering_calibration.json  # Saved steering offset
 ├── picar/
 │   ├── motors/
 │   │   ├── motor_controller.py
@@ -43,10 +50,12 @@ picar/
 │   └── utils.py               # Backend utilities
 ├── frontend/
 │   ├── templates/
-│   │   └── index.html
+│   │   ├── index.html
+│   │   └── steering_calibration.html
 │   └── static/
 │       ├── style.css
-│       └── control.js
+│       ├── control.js
+│       └── steering_calibration.js
 ├── requirements.txt
 └── README.md
 ```
@@ -60,7 +69,9 @@ picar/
 
 ## Installation
 
-### Option 1: Automated Deployment with Ansible (Recommended)
+### Option 1: Automated Deployment with Ansible
+
+> ⚠️ This Ansible path is currently untested in this repository.
 
 For automated deployment to a fresh Raspberry Pi:
 
@@ -199,6 +210,16 @@ Open browser and navigate to:
 http://<raspberry-pi-ip>:5000
 ```
 
+### Steering Calibration
+
+Open the dedicated calibration page:
+
+```
+http://<raspberry-pi-ip>:5000/steering-calibration
+```
+
+Use this page to adjust steering center offset and save it permanently.
+
 ### Keyboard Controls
 
 | Key | Action |
@@ -258,11 +279,31 @@ http://<raspberry-pi-ip>:5000
 
 - `GET /api/camera/status` - Get current camera position
 
-- `GET /api/camera/start-stream` - Start streaming
+- `POST /api/camera/start-stream` - Start streaming
 
 - `POST /api/camera/stop-stream` - Stop streaming
 
 - `GET /stream` - MJPEG stream endpoint
+
+### Steering
+
+- `POST /api/steering/angle` - Set steering angle
+  ```json
+  { "angle": 25 }
+  ```
+
+- `POST /api/steering/center` - Center steering
+
+- `GET /api/steering/status` - Get steering angle and current calibration offset
+
+- `GET /api/steering/calibration` - Get steering calibration offset
+
+- `POST /api/steering/calibration` - Save steering calibration offset
+  ```json
+  { "offset": -3 }
+  ```
+
+- `POST /api/steering/calibration/reset` - Reset calibration offset to 0
 
 ### System
 
