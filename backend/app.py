@@ -16,6 +16,7 @@ from config.config import FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE
 from picar import (
     get_motor_controller,
     get_servo_controller,
+    get_steering_controller,
     get_camera_stream
 )
 
@@ -27,6 +28,7 @@ CORS(app)
 # Get controller instances
 motor_ctrl = get_motor_controller()
 servo_ctrl = get_servo_controller()
+steering_ctrl = get_steering_controller()
 camera_stream = get_camera_stream()
 
 
@@ -76,6 +78,29 @@ def motor_status():
         'left_speed': motor_ctrl.left_speed,
         'right_speed': motor_ctrl.right_speed
     })
+
+
+# ==================== Steering Routes ====================
+
+@app.route('/api/steering/angle', methods=['POST'])
+def steering_set_angle():
+    """Set front wheel steering angle."""
+    angle = request.json.get('angle', 0)
+    steering_ctrl.set_angle(angle)
+    return jsonify({'status': 'success', 'angle': steering_ctrl.angle})
+
+
+@app.route('/api/steering/center', methods=['POST'])
+def steering_center():
+    """Center front wheel steering."""
+    steering_ctrl.center()
+    return jsonify({'status': 'success', 'angle': steering_ctrl.angle})
+
+
+@app.route('/api/steering/status', methods=['GET'])
+def steering_status():
+    """Get current steering angle."""
+    return jsonify({'angle': steering_ctrl.angle})
 
 
 # ==================== Servo Routes ====================
@@ -160,6 +185,7 @@ def health_check():
         'status': 'ok',
         'motors_initialized': motor_ctrl.initialized,
         'servos_initialized': servo_ctrl.initialized,
+        'steering_initialized': steering_ctrl.initialized,
         'camera_initialized': camera_stream.initialized
     })
 
@@ -193,4 +219,5 @@ if __name__ == '__main__':
         # Cleanup on exit
         motor_ctrl.cleanup()
         servo_ctrl.cleanup()
+        steering_ctrl.cleanup()
         camera_stream.cleanup()

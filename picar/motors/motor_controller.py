@@ -14,7 +14,9 @@ sys.path.insert(0, str(config_path))
 
 from config.config import (
     MOTOR_LEFT, MOTOR_RIGHT,
-    MAX_SPEED
+    MAX_SPEED,
+    MOTOR_LEFT_DIRECTION,
+    MOTOR_RIGHT_DIRECTION,
 )
 
 try:
@@ -68,7 +70,7 @@ class MotorController:
 
             self.left_motor = MotorFactory.create_i2c_motor(
                 config=I2CDCMotorConfig(
-                    calibration_direction=1,
+                    calibration_direction=MOTOR_LEFT_DIRECTION,
                     name="left_motor",
                     max_speed=MAX_SPEED,
                     driver=driver_cfg,
@@ -78,7 +80,7 @@ class MotorController:
             )
             self.right_motor = MotorFactory.create_i2c_motor(
                 config=I2CDCMotorConfig(
-                    calibration_direction=1,
+                    calibration_direction=MOTOR_RIGHT_DIRECTION,
                     name="right_motor",
                     max_speed=MAX_SPEED,
                     driver=driver_cfg,

@@ -4,6 +4,8 @@ const API_BASE = '';
 let currentSpeed = 50;
 let currentPan = 0;
 let currentTilt = 0;
+let currentSteering = 0;
+const STEERING_TURN_ANGLE = 25;
 let frameCount = 0;
 let lastFpsTime = Date.now();
 
@@ -12,8 +14,10 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('PiCar-X Control Interface loaded');
     checkHealth();
     updateCameraStatus();
+    updateSteeringStatus();
     setInterval(checkHealth, 5000);
     setInterval(updateCameraStatus, 1000);
+    setInterval(updateSteeringStatus, 1000);
     setupKeyboardControl();
 });
 
@@ -78,13 +82,12 @@ async function moveBackward() {
 
 async function moveLeft() {
     try {
-        const speed = parseInt(document.getElementById('speed-slider').value);
-        await fetch(`${API_BASE}/api/motors/set-speed`, {
+        await fetch(`${API_BASE}/api/steering/angle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ left_speed: -speed, right_speed: speed })
+            body: JSON.stringify({ angle: -STEERING_TURN_ANGLE })
         });
-        updateMotorStatus();
+        updateSteeringStatus();
     } catch (error) {
         console.error('Left command failed:', error);
     }
@@ -92,15 +95,26 @@ async function moveLeft() {
 
 async function moveRight() {
     try {
-        const speed = parseInt(document.getElementById('speed-slider').value);
-        await fetch(`${API_BASE}/api/motors/set-speed`, {
+        await fetch(`${API_BASE}/api/steering/angle`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ left_speed: speed, right_speed: -speed })
+            body: JSON.stringify({ angle: STEERING_TURN_ANGLE })
         });
-        updateMotorStatus();
+        updateSteeringStatus();
     } catch (error) {
         console.error('Right command failed:', error);
+    }
+}
+
+async function centerSteering() {
+    try {
+        await fetch(`${API_BASE}/api/steering/center`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        updateSteeringStatus();
+    } catch (error) {
+        console.error('Center steering failed:', error);
     }
 }
 
@@ -110,7 +124,12 @@ async function stopMotors() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
+        await fetch(`${API_BASE}/api/steering/center`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
         updateMotorStatus();
+        updateSteeringStatus();
         document.getElementById('left-slider').value = 0;
         document.getElementById('right-slider').value = 0;
         document.getElementById('left-manual').textContent = 0;
@@ -149,6 +168,17 @@ async function updateMotorStatus() {
             data.right_speed + '%';
     } catch (error) {
         console.error('Failed to update motor status:', error);
+    }
+}
+
+async function updateSteeringStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/api/steering/status`);
+        const data = await response.json();
+        currentSteering = data.angle;
+        document.getElementById('steering-angle').textContent = `${currentSteering}°`;
+    } catch (error) {
+        console.error('Failed to update steering status:', error);
     }
 }
 
@@ -253,11 +283,14 @@ function setupKeyboardControl() {
     });
     
     document.addEventListener('keyup', function(e) {
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || 
-            e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
-            e.key.toLowerCase() === 'w' || e.key.toLowerCase() === 's' ||
-            e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'd') {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' ||
+            e.key.toLowerCase() === 'w' || e.key.toLowerCase() === 's') {
             stopMotors();
+        }
+
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' ||
+            e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'd') {
+            centerSteering();
         }
     });
 }

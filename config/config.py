@@ -10,13 +10,22 @@ MOTOR_RIGHT = "M2"  # Right motor
 # Servo pins (using robot-hat naming)
 SERVO_PAN_PIN = "P0"  # Pan servo
 SERVO_TILT_PIN = "P1"  # Tilt servo
+STEERING_SERVO_PIN = "P2"  # Front wheel steering servo
 
 # Servo Configuration
 SERVO_MIN_ANGLE = -90
 SERVO_MAX_ANGLE = 90
 
+# Steering Configuration
+STEERING_MIN_ANGLE = -35
+STEERING_MAX_ANGLE = 35
+STEERING_CENTER_ANGLE = 0
+STEERING_TURN_ANGLE = 25
+
 # Motor Configuration
 MAX_SPEED = 100  # 0-100%
+MOTOR_LEFT_DIRECTION = 1
+MOTOR_RIGHT_DIRECTION = -1
 
 # Camera Configuration
 CAMERA_RESOLUTION = (640, 480)
