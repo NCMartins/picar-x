@@ -2,12 +2,12 @@
 # Customize these for your deployment
 
 # Repository settings
-picar_repo_url: "https://github.com/your-username/picar-x.git"
+picar_repo_url: "https://github.com/ncmartins/picar-x.git"
 picar_repo_branch: "main"
 picar_install_path: "/home/pi/projects/picar-x"
 
 # Network settings
-picar_static_ip: "192.168.1.100"
+picar_static_ip: "192.168.1.204"
 picar_netmask: "24"
 picar_gateway: "192.168.1.1"
 picar_dns_servers:

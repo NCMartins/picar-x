@@ -19,12 +19,19 @@ uv --version >nul 2>&1
 if errorlevel 1 (
     echo uv not found. Installing uv...
     powershell -Command "irm https://astral.sh/uv/install.ps1 | iex"
-    setx PATH "%APPDATA%\Python\Scripts;%PATH%"
+    REM Update PATH for current session
+    set "PATH=%APPDATA%\Python\Scripts;%PATH%"
+    echo uv installed. Please restart this script if uv commands fail.
 )
 
 REM Sync dependencies using uv
 echo Syncing dependencies with uv...
 call uv sync --python 3.9
+if errorlevel 1 (
+    echo ERROR: Failed to sync dependencies. Please check your Python 3.9 installation.
+    pause
+    exit /b 1
+)
 
 REM Navigate to backend and start server
 echo.
@@ -34,5 +41,10 @@ echo.
 
 cd /d "%PROJECT_DIR%backend"
 call uv run python app.py
+if errorlevel 1 (
+    echo ERROR: Failed to start the server. Please check the error messages above.
+    pause
+    exit /b 1
+)
 
 pause
