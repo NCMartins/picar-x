@@ -1,5 +1,6 @@
 #!/bin/bash
 # PiCar-X Quick Start Script for Raspberry Pi using uv
+# Skips Windows tests - designed exclusively for Linux/Raspberry Pi
 
 set -e
 
@@ -13,6 +14,14 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
+
+# Check if running on Windows (skip Windows tests)
+if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    echo -e "${YELLOW}Warning: This script is designed for Linux/Raspberry Pi.${NC}"
+    echo -e "${YELLOW}For Windows development, use start.bat instead.${NC}"
+    echo -e "${YELLOW}Skipping Windows compatibility tests...${NC}"
+    exit 1
+fi
 
 # Get project directory
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,8 +47,11 @@ fi
 # Navigate to backend and start server
 echo -e "${GREEN}Starting PiCar-X server...${NC}"
 
-# Get IP address for display
-IP_ADDRESS=$(hostname -I 2>/dev/null | awk '{print $1}' || hostname -i 2>/dev/null || echo "localhost")
+# Get IP address for display (Linux-specific)
+IP_ADDRESS=$(hostname -I | awk '{print $1}')
+if [[ -z "$IP_ADDRESS" ]]; then
+    IP_ADDRESS="localhost"
+fi
 echo -e "${BLUE}Access the web interface at: http://${IP_ADDRESS}:5000${NC}"
 echo ""
 
