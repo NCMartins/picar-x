@@ -39,8 +39,8 @@ fi
 
 # Sync dependencies using uv
 echo -e "${YELLOW}Syncing dependencies with uv...${NC}"
-if ! uv sync --python 3.9; then
-    echo -e "${RED}Failed to sync dependencies. Please check your Python 3.9 installation.${NC}"
+if ! uv sync; then
+    echo -e "${RED}Failed to sync dependencies. Please check your Python installation.${NC}"
     exit 1
 fi
 

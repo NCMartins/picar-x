@@ -12,7 +12,7 @@ dependencies = [
     "flask-cors==4.0.0",
     "Werkzeug==2.3.0",
     "picamera2==0.3.9",
-    "adafruit-pca9685==1.4.1",
+    "adafruit-circuitpython-pca9685",
     "RPi.GPIO==0.7.0",
 ]
 
@@ -28,6 +28,3 @@ dev = [
 [build-system]
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.uv]
-python-version = "3.9"

@@ -26,9 +26,9 @@ if errorlevel 1 (
 
 REM Sync dependencies using uv
 echo Syncing dependencies with uv...
-call uv sync --python 3.9
+call uv sync
 if errorlevel 1 (
-    echo ERROR: Failed to sync dependencies. Please check your Python 3.9 installation.
+    echo ERROR: Failed to sync dependencies. Please check your Python installation.
     pause
     exit /b 1
 )
