@@ -1,4 +1,5 @@
 #!/bin/bash
+
 # PiCar-X Ansible Deployment Test Script
 # Run this on a Linux/Mac system with Ansible installed
 

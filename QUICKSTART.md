@@ -200,11 +200,15 @@ sudo journalctl -u picar.service -f
 
 ### Camera not streaming?
 ```bash
-# Verify camera
-libcamera-hello --list-cameras
+# Verify camera (Raspberry Pi OS Bookworm / newer)
+rpicam-hello --list-cameras
 
 # Check resolution compatibility
-libcamera-jpeg -o test.jpg
+rpicam-jpeg -o test.jpg
+
+# Legacy commands (older Raspberry Pi OS Bullseye)
+# libcamera-hello --list-cameras
+# libcamera-jpeg -o test.jpg
 ```
 
 ### I2C servo issues?

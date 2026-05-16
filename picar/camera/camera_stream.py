@@ -22,6 +22,7 @@ from config.config import (
 
 try:
     from picamera2 import Picamera2
+    from PIL import Image
     HARDWARE_AVAILABLE = True
 except ImportError:
     HARDWARE_AVAILABLE = False
@@ -46,16 +47,10 @@ class CameraStream:
         try:
             self.camera = Picamera2()
             
-            # Configure camera
-            config = self.camera.create_still_configuration(
-                main={"size": CAMERA_RESOLUTION},
-                raw={"size": CAMERA_RESOLUTION}
+            # Use video configuration for continuous streaming
+            config = self.camera.create_video_configuration(
+                main={"size": CAMERA_RESOLUTION, "format": "RGB888"}
             )
-            
-            # Set rotation if needed
-            if CAMERA_ROTATION != 0:
-                config['display'] = self.camera.create_video_configuration()
-                # Note: Rotation setting may vary depending on picamera2 version
             
             self.camera.configure(config)
             self.camera.start()
@@ -78,15 +73,11 @@ class CameraStream:
         
         try:
             with self.lock:
-                # Capture JPEG directly
-                request = self.camera.capture_request()
-                data = request.make_array("main")
-                request.release()
-                
-                # Convert to JPEG
+                # Capture frame as numpy array and encode as JPEG
+                data = self.camera.capture_array()
+                img = Image.fromarray(data)
                 buffer = io.BytesIO()
-                # In production, use proper JPEG encoding
-                # For now, we'll return raw data (should be encoded as JPEG)
+                img.save(buffer, format='JPEG', quality=STREAM_QUALITY)
                 return buffer.getvalue()
         except Exception as e:
             print(f"Error capturing frame: {e}")
