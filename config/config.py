@@ -2,6 +2,24 @@
 Configuration for PiCar-X
 """
 
+import os
+
+# Security Configuration
+# Set PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD to require HTTP Basic Auth on the
+# web interface and API. Leave unset for local/trusted-network development
+# only - the server will otherwise be reachable by anyone on the network.
+AUTH_USERNAME = os.getenv('PICAR_AUTH_USERNAME', '')
+AUTH_PASSWORD = os.getenv('PICAR_AUTH_PASSWORD', '')
+
+# Comma-separated list of origins allowed to make cross-origin requests to the
+# API, e.g. "http://192.168.1.50:3000,http://localhost:3000". Empty by default
+# since the web interface is normally served same-origin and doesn't need CORS.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('PICAR_ALLOWED_ORIGINS', '').split(',')
+    if origin.strip()
+]
+
 # Hardware Configuration
 # Motor pins (using robot-hat naming)
 MOTOR_LEFT = "M1"  # Left motor
