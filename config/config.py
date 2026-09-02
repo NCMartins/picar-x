@@ -27,6 +27,11 @@ MAX_SPEED = 100  # 0-100%
 MOTOR_LEFT_DIRECTION = 1
 MOTOR_RIGHT_DIRECTION = -1
 
+# Dead-man's switch: auto-stop the motors if no new command arrives within
+# this many seconds while they're moving (e.g. dropped connection mid-drive).
+MOTOR_WATCHDOG_TIMEOUT = 1.0
+MOTOR_WATCHDOG_POLL_INTERVAL = 0.2
+
 # Camera Configuration
 CAMERA_RESOLUTION = (640, 480)
 CAMERA_FRAMERATE = 30

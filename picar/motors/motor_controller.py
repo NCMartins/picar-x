@@ -4,6 +4,7 @@ Handles DC motors for forward/backward and left/right movement
 """
 
 import threading
+import time
 from typing import Optional, Tuple
 import sys
 from pathlib import Path
@@ -17,6 +18,8 @@ from config.config import (
     MAX_SPEED,
     MOTOR_LEFT_DIRECTION,
     MOTOR_RIGHT_DIRECTION,
+    MOTOR_WATCHDOG_TIMEOUT,
+    MOTOR_WATCHDOG_POLL_INTERVAL,
 )
 
 try:
@@ -50,7 +53,14 @@ class MotorController:
         self.right_motor = None
         self.lock = threading.Lock()
         self.initialized = False
-        
+
+        # Dead-man's switch: auto-stop if no command refreshes the speed
+        # within MOTOR_WATCHDOG_TIMEOUT seconds while the motors are moving
+        # (e.g. the browser tab crashes or wifi drops mid-drive).
+        self._last_command_time = time.monotonic()
+        self._watchdog_thread: Optional[threading.Thread] = None
+        self._watchdog_stop = threading.Event()
+
         if HARDWARE_AVAILABLE:
             self._init_motors()
     
@@ -99,22 +109,54 @@ class MotorController:
     def set_speed(self, left_speed: int, right_speed: int) -> None:
         """
         Set motor speeds
-        
+
         Args:
             left_speed: Left motor speed (-100 to 100)
             right_speed: Right motor speed (-100 to 100)
         """
         with self.lock:
-            # Clamp speeds
-            left_speed = max(-MAX_SPEED, min(MAX_SPEED, left_speed))
-            right_speed = max(-MAX_SPEED, min(MAX_SPEED, right_speed))
-            
-            self.left_speed = left_speed
-            self.right_speed = right_speed
-            
-            if HARDWARE_AVAILABLE and self.initialized and self.left_motor and self.right_motor:
-                self._apply_speed()
-    
+            self._set_speed_locked(left_speed, right_speed)
+
+    def _set_speed_locked(self, left_speed: int, right_speed: int) -> None:
+        """Set motor speeds. Caller must already hold self.lock."""
+        # Clamp speeds
+        left_speed = max(-MAX_SPEED, min(MAX_SPEED, left_speed))
+        right_speed = max(-MAX_SPEED, min(MAX_SPEED, right_speed))
+
+        self.left_speed = left_speed
+        self.right_speed = right_speed
+        self._last_command_time = time.monotonic()
+
+        if HARDWARE_AVAILABLE and self.initialized and self.left_motor and self.right_motor:
+            self._apply_speed()
+
+        self._update_watchdog()
+
+    def _update_watchdog(self) -> None:
+        """Start/stop the watchdog thread based on whether motors are moving. Caller must hold self.lock."""
+        moving = self.left_speed != 0 or self.right_speed != 0
+        if moving:
+            if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
+                self._watchdog_stop.clear()
+                self._watchdog_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
+                self._watchdog_thread.start()
+        else:
+            self._watchdog_stop.set()
+
+    def _watchdog_loop(self) -> None:
+        """Auto-stop the motors if no new command arrives before the timeout."""
+        while not self._watchdog_stop.wait(MOTOR_WATCHDOG_POLL_INTERVAL):
+            with self.lock:
+                if self.left_speed == 0 and self.right_speed == 0:
+                    return
+                if time.monotonic() - self._last_command_time >= MOTOR_WATCHDOG_TIMEOUT:
+                    print(
+                        f"Motor watchdog: no command received for "
+                        f"{MOTOR_WATCHDOG_TIMEOUT}s, stopping motors"
+                    )
+                    self._set_speed_locked(0, 0)
+                    return
+
     def _apply_speed(self):
         """Apply current speeds to motors"""
         try:
@@ -137,6 +179,7 @@ class MotorController:
     
     def cleanup(self):
         """Cleanup motor resources"""
+        self._watchdog_stop.set()
         if HARDWARE_AVAILABLE and self.initialized:
             try:
                 self.stop()

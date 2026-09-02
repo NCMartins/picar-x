@@ -235,6 +235,15 @@ Use this page to adjust steering center offset and save it permanently.
 | 2 / ↓ | Tilt Down |
 | 5 | Center Camera |
 
+## Safety
+
+The motors have a built-in dead-man's switch: if no forward/backward/speed
+command refreshes them within `MOTOR_WATCHDOG_TIMEOUT` (1 second by default,
+see `config/config.py`), they're automatically stopped. This protects against
+a dropped connection, a crashed browser tab, or a locked phone leaving the
+robot driving indefinitely - it does not require any changes to how the
+frontend sends commands.
+
 ## API Endpoints
 
 ### Motors
