@@ -3,6 +3,7 @@ Servo controller for PiCar-X camera pan/tilt control
 Controls camera direction using servos
 """
 
+import logging
 import threading
 from typing import Optional
 import sys
@@ -25,8 +26,10 @@ except ImportError:
     ROBOT_HAT_AVAILABLE = False
 
 HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
+
+logger = logging.getLogger(__name__)
 if not ROBOT_HAT_AVAILABLE:
-    print("Warning: robot_hat not available - running in simulation mode")
+    logger.warning("robot_hat not available - running in simulation mode")
 
 
 class ServoController:
@@ -72,9 +75,9 @@ class ServoController:
                 self.tilt_servo = Servo(tilt_channel)
 
             self.initialized = True
-            print("Servo controller initialized successfully")
+            logger.info("Servo controller initialized successfully")
         except Exception as e:
-            print(f"Error initializing servos: {e}")
+            logger.error("Error initializing servos: %s", e)
             self.pan_servo = None
             self.tilt_servo = None
             if self.pwm_driver:
@@ -128,14 +131,14 @@ class ServoController:
         try:
             self.pan_servo.angle(self.pan_angle)
         except Exception as e:
-            print(f"Error setting pan servo: {e}")
+            logger.error("Error setting pan servo: %s", e)
     
     def _apply_tilt_angle(self):
         """Apply tilt angle to servo"""
         try:
             self.tilt_servo.angle(self.tilt_angle)
         except Exception as e:
-            print(f"Error setting tilt servo: {e}")
+            logger.error("Error setting tilt servo: %s", e)
     
     def center(self) -> None:
         """Center both pan and tilt"""
@@ -148,9 +151,9 @@ class ServoController:
                 self.center()
                 if self.pwm_driver:
                     self.pwm_driver.close()
-                print("Servo controller cleaned up")
+                logger.info("Servo controller cleaned up")
             except Exception as e:
-                print(f"Error cleaning up servos: {e}")
+                logger.error("Error cleaning up servos: %s", e)
 
 
 # Singleton instance

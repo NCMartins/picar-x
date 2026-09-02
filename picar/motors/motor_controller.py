@@ -3,6 +3,7 @@ Motor controller for PiCar-X movement control
 Handles DC motors for forward/backward and left/right movement
 """
 
+import logging
 import threading
 from typing import Optional, Tuple
 import sys
@@ -26,8 +27,10 @@ except ImportError:
     ROBOT_HAT_AVAILABLE = False
 
 HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
+
+logger = logging.getLogger(__name__)
 if not ROBOT_HAT_AVAILABLE:
-    print("Warning: robot_hat not available - running in simulation mode")
+    logger.warning("robot_hat not available - running in simulation mode")
 
 
 def _resolve_motor_mapping(motor_name: str) -> Tuple[str, str]:
@@ -90,9 +93,9 @@ class MotorController:
             )
 
             self.initialized = True
-            print("Motor controller initialized successfully")
+            logger.info("Motor controller initialized successfully")
         except Exception as e:
-            print(f"Error initializing motors: {e}")
+            logger.error("Error initializing motors: %s", e)
             self.left_motor = None
             self.right_motor = None
     
@@ -121,7 +124,7 @@ class MotorController:
             self.left_motor.set_speed(self.left_speed)
             self.right_motor.set_speed(self.right_speed)
         except Exception as e:
-            print(f"Error setting motor speeds: {e}")
+            logger.error("Error setting motor speeds: %s", e)
     
     def forward(self, speed: int = MAX_SPEED) -> None:
         """Move forward at specified speed"""
@@ -144,9 +147,9 @@ class MotorController:
                     self.left_motor.close()
                 if self.right_motor:
                     self.right_motor.close()
-                print("Motor controller cleaned up")
+                logger.info("Motor controller cleaned up")
             except Exception as e:
-                print(f"Error cleaning up motors: {e}")
+                logger.error("Error cleaning up motors: %s", e)
 
 
 # Singleton instance
