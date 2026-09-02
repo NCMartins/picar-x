@@ -178,6 +178,25 @@ SERVO_PAN_PIN = "P0"  # Pan servo
 SERVO_TILT_PIN = "P1"  # Tilt servo
 ```
 
+## Security
+
+By default the web interface and API have **no authentication** and CORS is
+locked down to same-origin only. Anyone who can reach the Pi on the network
+can drive the robot and view the camera stream unless you set:
+
+```bash
+export PICAR_AUTH_USERNAME="pick-a-username"
+export PICAR_AUTH_PASSWORD="pick-a-strong-password"
+```
+
+before starting the server. When set, every request (page load and API) must
+pass HTTP Basic Auth. If you need to call the API from a different origin
+(e.g. a separate frontend dev server), also set:
+
+```bash
+export PICAR_ALLOWED_ORIGINS="http://localhost:3000,http://192.168.1.50:3000"
+```
+
 ## Usage
 
 ### Start the Server
