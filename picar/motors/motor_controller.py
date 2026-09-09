@@ -3,7 +3,6 @@ Motor controller for PiCar-X movement control
 Handles DC motors for forward/backward and left/right movement
 """
 
-import threading
 from typing import Optional, Tuple
 import sys
 from pathlib import Path
@@ -18,6 +17,7 @@ from config.config import (
     MOTOR_LEFT_DIRECTION,
     MOTOR_RIGHT_DIRECTION,
 )
+from ..hardware_component import HardwareComponent
 
 try:
     from robot_hat import MotorFactory, I2CDCMotorConfig, PWMDriverConfig
@@ -39,19 +39,18 @@ def _resolve_motor_mapping(motor_name: str) -> Tuple[str, str]:
     return mapping.get(motor_name.upper(), mapping["M1"])
 
 
-class MotorController:
+class MotorController(HardwareComponent):
     """Controls DC motors for PiCar-X movement"""
-    
+
     def __init__(self):
         """Initialize motor controller"""
+        super().__init__(HARDWARE_AVAILABLE)
         self.left_speed = 0
         self.right_speed = 0
         self.left_motor = None
         self.right_motor = None
-        self.lock = threading.Lock()
-        self.initialized = False
-        
-        if HARDWARE_AVAILABLE:
+
+        if self.hardware_available:
             self._init_motors()
     
     def _init_motors(self):
@@ -112,7 +111,7 @@ class MotorController:
             self.left_speed = left_speed
             self.right_speed = right_speed
             
-            if HARDWARE_AVAILABLE and self.initialized and self.left_motor and self.right_motor:
+            if self.ready and self.left_motor and self.right_motor:
                 self._apply_speed()
     
     def _apply_speed(self):
@@ -137,7 +136,7 @@ class MotorController:
     
     def cleanup(self):
         """Cleanup motor resources"""
-        if HARDWARE_AVAILABLE and self.initialized:
+        if self.ready:
             try:
                 self.stop()
                 if self.left_motor:

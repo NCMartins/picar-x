@@ -3,7 +3,6 @@ Camera streaming for PiCar-X
 Provides MJPEG streaming and camera control
 """
 
-import threading
 import io
 import time
 from typing import Generator
@@ -19,6 +18,7 @@ from config.config import (
     CAMERA_ROTATION, STREAM_QUALITY,
     MJPEG_BOUNDARY, MJPEG_CONTENT_TYPE
 )
+from ..hardware_component import HardwareComponent
 
 try:
     from picamera2 import Picamera2
@@ -29,17 +29,16 @@ except ImportError:
     print("Warning: picamera2 not available - running in simulation mode")
 
 
-class CameraStream:
+class CameraStream(HardwareComponent):
     """Handles camera streaming and control"""
-    
+
     def __init__(self):
         """Initialize camera stream"""
+        super().__init__(HARDWARE_AVAILABLE)
         self.camera = None
         self.streaming = False
-        self.lock = threading.Lock()
-        self.initialized = False
-        
-        if HARDWARE_AVAILABLE:
+
+        if self.hardware_available:
             self._init_camera()
     
     def _init_camera(self):
@@ -67,7 +66,7 @@ class CameraStream:
         Returns:
             JPEG frame as bytes, or None if unavailable
         """
-        if not HARDWARE_AVAILABLE or not self.initialized or not self.camera:
+        if not self.ready or not self.camera:
             # Return dummy JPEG in simulation mode
             return self._get_dummy_frame()
         

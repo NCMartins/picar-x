@@ -1,7 +1,6 @@
 """Steering controller for PiCar-X front wheel steering."""
 
 import inspect
-import threading
 import json
 import sys
 from pathlib import Path
@@ -16,6 +15,7 @@ from config.config import (
     STEERING_MAX_ANGLE,
     STEERING_CENTER_ANGLE,
 )
+from ..hardware_component import HardwareComponent
 
 try:
     from robot_hat import Servo, PWMFactory, PWMDriverConfig
@@ -25,20 +25,19 @@ except ImportError:
     print("Warning: robot_hat not available - steering in simulation mode")
 
 
-class SteeringController:
+class SteeringController(HardwareComponent):
     """Controls front wheel steering angle."""
 
     def __init__(self):
+        super().__init__(HARDWARE_AVAILABLE)
         self.angle = STEERING_CENTER_ANGLE
         self.calibration_offset = 0
         self._calibration_file = Path(__file__).parent.parent.parent / 'config' / 'steering_calibration.json'
         self.servo = None
         self.pwm_driver = None
-        self.lock = threading.Lock()
-        self.initialized = False
         self._load_calibration()
 
-        if HARDWARE_AVAILABLE:
+        if self.hardware_available:
             self._init_servo()
 
     def _load_calibration(self) -> None:
@@ -104,7 +103,7 @@ class SteeringController:
                 STEERING_MIN_ANGLE,
                 min(STEERING_MAX_ANGLE, self.angle + self.calibration_offset),
             )
-            if HARDWARE_AVAILABLE and self.initialized and self.servo:
+            if self.ready and self.servo:
                 try:
                     self.servo.angle(physical_angle)
                 except Exception as e:
@@ -128,7 +127,7 @@ class SteeringController:
 
     def cleanup(self):
         """Cleanup steering resources."""
-        if HARDWARE_AVAILABLE and self.initialized:
+        if self.ready:
             try:
                 self.center()
                 if self.pwm_driver:
