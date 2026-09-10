@@ -27,6 +27,8 @@ dev = [
 [tool.setuptools]
 packages = ["picar", "config"]
 # exclude = ["ansible*", "frontend*", "backend*", "tests*", "docs*"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 [build-system]
 requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"

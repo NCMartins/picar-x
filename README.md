@@ -362,6 +362,17 @@ source .venv/bin/activate
 python backend/app.py
 ```
 
+### Automated Tests
+
+The `tests/` directory has a `pytest` suite covering controller behavior
+(angle/speed clamping, calibration persistence, camera streaming) and the
+Flask API, all running in simulation mode - no Raspberry Pi hardware needed:
+
+```bash
+uv pip install -e ".[dev]"
+pytest
+```
+
 ### Testing Individual Modules
 
 ```python
