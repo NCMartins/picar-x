@@ -4,7 +4,5 @@ Werkzeug==2.3.0
 picamera2>=0.3.34
 robot-hat
 
-# RPi.GPIO installed via apt (python3-rpi.gpio)
-
 # Note: This file is maintained for compatibility
 # Primary dependency management is via pyproject.toml and uv

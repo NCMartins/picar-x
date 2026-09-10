@@ -13,7 +13,6 @@ dependencies = [
     "Werkzeug>=2.3.0",
     # "picamera2>=0.3.34",
     "robot-hat",
-    "rpi-gpio==0.7.1",
 ]
 
 [project.optional-dependencies]
