@@ -178,6 +178,25 @@ SERVO_PAN_PIN = "P0"  # Pan servo
 SERVO_TILT_PIN = "P1"  # Tilt servo
 ```
 
+## Security
+
+By default the web interface and API have **no authentication** and CORS is
+locked down to same-origin only. Anyone who can reach the Pi on the network
+can drive the robot and view the camera stream unless you set:
+
+```bash
+export PICAR_AUTH_USERNAME="pick-a-username"
+export PICAR_AUTH_PASSWORD="pick-a-strong-password"
+```
+
+before starting the server. When set, every request (page load and API) must
+pass HTTP Basic Auth. If you need to call the API from a different origin
+(e.g. a separate frontend dev server), also set:
+
+```bash
+export PICAR_ALLOWED_ORIGINS="http://localhost:3000,http://192.168.1.50:3000"
+```
+
 ## Usage
 
 ### Start the Server
@@ -202,6 +221,8 @@ Or use the launcher script:
 # Windows
 start.bat
 ```
+
+`backend/app.py` serves the app with [waitress](https://docs.pylonsproject.org/projects/waitress/), a production-grade WSGI server, rather than Flask's built-in development server.
 
 ### Access Web Interface
 
@@ -234,6 +255,15 @@ Use this page to adjust steering center offset and save it permanently.
 | 8 / ↑ | Tilt Up |
 | 2 / ↓ | Tilt Down |
 | 5 | Center Camera |
+
+## Safety
+
+The motors have a built-in dead-man's switch: if no forward/backward/speed
+command refreshes them within `MOTOR_WATCHDOG_TIMEOUT` (1 second by default,
+see `config/config.py`), they're automatically stopped. This protects against
+a dropped connection, a crashed browser tab, or a locked phone leaving the
+robot driving indefinitely - it does not require any changes to how the
+frontend sends commands.
 
 ## API Endpoints
 
@@ -330,6 +360,17 @@ In simulation mode:
 # Works on any system without Raspberry Pi hardware
 source .venv/bin/activate
 python backend/app.py
+```
+
+### Automated Tests
+
+The `tests/` directory has a `pytest` suite covering controller behavior
+(angle/speed clamping, calibration persistence, camera streaming) and the
+Flask API, all running in simulation mode - no Raspberry Pi hardware needed:
+
+```bash
+uv pip install -e ".[dev]"
+pytest
 ```
 
 ### Testing Individual Modules
