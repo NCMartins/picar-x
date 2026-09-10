@@ -35,10 +35,20 @@ class CameraStream:
     def __init__(self):
         """Initialize camera stream"""
         self.camera = None
+        # True when at least one client has an active MJPEG stream.
         self.streaming = False
         self.lock = threading.Lock()
         self.initialized = False
-        
+
+        # Multiple browser tabs/clients can each open their own /stream
+        # connection. _active_stream_count tracks how many are currently
+        # running so one client disconnecting doesn't kill the others.
+        # _stop_event is a broadcast signal used by stop_streaming() to
+        # tell every currently active stream to end.
+        self._active_stream_count = 0
+        self._count_lock = threading.Lock()
+        self._stop_event = threading.Event()
+
         if HARDWARE_AVAILABLE:
             self._init_camera()
     
@@ -91,14 +101,21 @@ class CameraStream:
     
     def stream_generator(self) -> Generator[bytes, None, None]:
         """
-        Generator for streaming frames as MJPEG
-        
+        Generator for streaming frames as MJPEG. Each client connection gets
+        its own generator instance; this only stops when that client
+        disconnects (GeneratorExit) or stop_streaming() broadcasts a stop to
+        every active stream - never as a side effect of another client's
+        stream ending.
+
         Yields:
             JPEG frames with MJPEG boundary markers
         """
-        self.streaming = True
+        self._stop_event.clear()
+        with self._count_lock:
+            self._active_stream_count += 1
+            self.streaming = True
         try:
-            while self.streaming:
+            while not self._stop_event.is_set():
                 frame = self.get_frame()
                 if frame:
                     yield (b'--BOUNDARY\r\nContent-Type: image/jpeg\r\n'
@@ -106,12 +123,14 @@ class CameraStream:
                            b'Content-Disposition: inline\r\n\r\n'
                            + frame + b'\r\n')
                 time.sleep(1.0 / CAMERA_FRAMERATE)  # Control framerate
-        except GeneratorExit:
-            self.streaming = False
-    
+        finally:
+            with self._count_lock:
+                self._active_stream_count = max(0, self._active_stream_count - 1)
+                self.streaming = self._active_stream_count > 0
+
     def stop_streaming(self):
-        """Stop streaming"""
-        self.streaming = False
+        """Signal every currently active stream to stop."""
+        self._stop_event.set()
     
     def cleanup(self):
         """Cleanup camera resources"""

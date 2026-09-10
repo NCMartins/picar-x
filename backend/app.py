@@ -5,6 +5,7 @@ RESTful API for controlling motors, servos, and camera
 
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
+import hmac
 import sys
 from pathlib import Path
 
@@ -12,7 +13,10 @@ from pathlib import Path
 project_path = Path(__file__).parent.parent
 sys.path.insert(0, str(project_path))
 
-from config.config import FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE
+from config.config import (
+    FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE,
+    AUTH_USERNAME, AUTH_PASSWORD, ALLOWED_ORIGINS,
+)
 from picar import (
     get_motor_controller,
     get_servo_controller,
@@ -20,10 +24,39 @@ from picar import (
     get_camera_stream
 )
 
-app = Flask(__name__, 
+app = Flask(__name__,
             template_folder='../frontend/templates',
             static_folder='../frontend/static')
-CORS(app)
+CORS(app, origins=ALLOWED_ORIGINS)
+
+AUTH_ENABLED = bool(AUTH_USERNAME and AUTH_PASSWORD)
+if not AUTH_ENABLED:
+    print(
+        "WARNING: PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD are not set. "
+        "The web interface and API are UNAUTHENTICATED and controllable by "
+        "anyone who can reach this host on the network."
+    )
+
+
+@app.before_request
+def require_auth():
+    """Require HTTP Basic Auth on every request when credentials are configured."""
+    if not AUTH_ENABLED:
+        return None
+
+    auth = request.authorization
+    valid = (
+        auth is not None
+        and auth.username is not None
+        and auth.password is not None
+        and hmac.compare_digest(auth.username, AUTH_USERNAME)
+        and hmac.compare_digest(auth.password, AUTH_PASSWORD)
+    )
+    if not valid:
+        return Response(
+            'Authentication required', 401,
+            {'WWW-Authenticate': 'Basic realm="PiCar-X"'}
+        )
 
 # Get controller instances
 motor_ctrl = get_motor_controller()
@@ -32,12 +65,43 @@ steering_ctrl = get_steering_controller()
 camera_stream = get_camera_stream()
 
 
+# ==================== Request Validation ====================
+
+def _get_json_body() -> dict:
+    """Parse the request's JSON body, tolerating a missing/empty body.
+
+    Does not raise on malformed JSON or a non-JSON Content-Type - callers
+    just get an empty dict and fall back to field defaults.
+    """
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
+def _require_number(data: dict, key: str, default):
+    """Fetch a numeric field from a parsed JSON body.
+
+    Raises ValueError (turned into a 400 response by the errorhandler
+    below) if the field is present but isn't a number.
+    """
+    value = data.get(key, default)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"'{key}' must be a number")
+    return value
+
+
+@app.errorhandler(ValueError)
+def handle_bad_request(error):
+    """Turn validation errors into a 400 instead of an unhandled 500."""
+    return jsonify({'status': 'error', 'message': str(error)}), 400
+
+
 # ==================== Motor Routes ====================
 
 @app.route('/api/motors/forward', methods=['POST'])
 def motor_forward():
     """Move forward"""
-    speed = request.json.get('speed', 100)
+    data = _get_json_body()
+    speed = _require_number(data, 'speed', 100)
     motor_ctrl.forward(speed)
     return jsonify({'status': 'success', 'action': 'forward', 'speed': speed})
 
@@ -45,7 +109,8 @@ def motor_forward():
 @app.route('/api/motors/backward', methods=['POST'])
 def motor_backward():
     """Move backward"""
-    speed = request.json.get('speed', 100)
+    data = _get_json_body()
+    speed = _require_number(data, 'speed', 100)
     motor_ctrl.backward(speed)
     return jsonify({'status': 'success', 'action': 'backward', 'speed': speed})
 
@@ -60,9 +125,9 @@ def motor_stop():
 @app.route('/api/motors/set-speed', methods=['POST'])
 def set_motor_speed():
     """Set individual motor speeds"""
-    data = request.json
-    left_speed = data.get('left_speed', 0)
-    right_speed = data.get('right_speed', 0)
+    data = _get_json_body()
+    left_speed = _require_number(data, 'left_speed', 0)
+    right_speed = _require_number(data, 'right_speed', 0)
     motor_ctrl.set_speed(left_speed, right_speed)
     return jsonify({
         'status': 'success',
@@ -85,7 +150,8 @@ def motor_status():
 @app.route('/api/steering/angle', methods=['POST'])
 def steering_set_angle():
     """Set front wheel steering angle."""
-    angle = request.json.get('angle', 0)
+    data = _get_json_body()
+    angle = _require_number(data, 'angle', 0)
     steering_ctrl.set_angle(angle)
     return jsonify({'status': 'success', 'angle': steering_ctrl.angle})
 
@@ -115,7 +181,8 @@ def steering_calibration_status():
 @app.route('/api/steering/calibration', methods=['POST'])
 def steering_set_calibration():
     """Set steering calibration offset."""
-    offset = request.json.get('offset', 0)
+    data = _get_json_body()
+    offset = _require_number(data, 'offset', 0)
     steering_ctrl.set_calibration_offset(int(offset))
     return jsonify({
         'status': 'success',
@@ -136,7 +203,8 @@ def steering_reset_calibration():
 @app.route('/api/camera/pan', methods=['POST'])
 def set_pan():
     """Set camera pan angle"""
-    angle = request.json.get('angle', 0)
+    data = _get_json_body()
+    angle = _require_number(data, 'angle', 0)
     servo_ctrl.set_pan(angle)
     return jsonify({'status': 'success', 'pan': angle})
 
@@ -144,7 +212,8 @@ def set_pan():
 @app.route('/api/camera/tilt', methods=['POST'])
 def set_tilt():
     """Set camera tilt angle"""
-    angle = request.json.get('angle', 0)
+    data = _get_json_body()
+    angle = _require_number(data, 'angle', 0)
     servo_ctrl.set_tilt(angle)
     return jsonify({'status': 'success', 'tilt': angle})
 
@@ -152,9 +221,9 @@ def set_tilt():
 @app.route('/api/camera/position', methods=['POST'])
 def set_camera_position():
     """Set both pan and tilt"""
-    data = request.json
-    pan = data.get('pan', 0)
-    tilt = data.get('tilt', 0)
+    data = _get_json_body()
+    pan = _require_number(data, 'pan', 0)
+    tilt = _require_number(data, 'tilt', 0)
     servo_ctrl.set_position(pan, tilt)
     return jsonify({
         'status': 'success',
@@ -248,8 +317,16 @@ def internal_error(error):
 
 if __name__ == '__main__':
     try:
-        print(f"Starting Flask server on {FLASK_HOST}:{FLASK_PORT}")
-        app.run(host=FLASK_HOST, port=FLASK_PORT, debug=False)
+        print(f"Starting production server (waitress) on {FLASK_HOST}:{FLASK_PORT}")
+        # Flask's built-in dev server isn't meant for production use (no
+        # concurrency/robustness guarantees, and it's single-threaded by
+        # default - which would block motor/API requests while the MJPEG
+        # stream endpoint is held open). waitress is a production-grade
+        # WSGI server; a modest thread pool lets a camera stream and API
+        # calls be served at the same time without needing a multi-process
+        # server, which would fight over the same I2C/GPIO hardware.
+        from waitress import serve
+        serve(app, host=FLASK_HOST, port=FLASK_PORT, threads=8)
     finally:
         # Cleanup on exit
         motor_ctrl.cleanup()

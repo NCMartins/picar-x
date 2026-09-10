@@ -11,13 +11,13 @@ dependencies = [
     "flask>=2.3.0",
     "flask-cors>=4.0.0",
     "Werkzeug>=2.3.0",
+    "waitress>=2.1.2",
     # picamera2 is intentionally not listed here: it ships as a system
     # package on Raspberry Pi OS (built against libcamera) and generally
     # can't be installed from PyPI on its own. Install it via apt, or use
     # `uv venv --system-site-packages` so the venv can see the system copy.
     # It's still listed in requirements.txt for the Pi install path.
     "robot-hat",
-    "rpi-gpio==0.7.1",
 ]
 
 [project.optional-dependencies]
@@ -33,7 +33,8 @@ dev = [
 # (ansible/, frontend/, backend/, docs/, etc.) is picked up as project
 # files but isn't part of the installable package.
 packages = ["picar", "config"]
-
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 [build-system]
 requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
