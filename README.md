@@ -222,6 +222,8 @@ Or use the launcher script:
 start.bat
 ```
 
+`backend/app.py` serves the app with [waitress](https://docs.pylonsproject.org/projects/waitress/), a production-grade WSGI server, rather than Flask's built-in development server.
+
 ### Access Web Interface
 
 Open browser and navigate to:

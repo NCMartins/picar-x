@@ -317,8 +317,16 @@ def internal_error(error):
 
 if __name__ == '__main__':
     try:
-        print(f"Starting Flask server on {FLASK_HOST}:{FLASK_PORT}")
-        app.run(host=FLASK_HOST, port=FLASK_PORT, debug=False)
+        print(f"Starting production server (waitress) on {FLASK_HOST}:{FLASK_PORT}")
+        # Flask's built-in dev server isn't meant for production use (no
+        # concurrency/robustness guarantees, and it's single-threaded by
+        # default - which would block motor/API requests while the MJPEG
+        # stream endpoint is held open). waitress is a production-grade
+        # WSGI server; a modest thread pool lets a camera stream and API
+        # calls be served at the same time without needing a multi-process
+        # server, which would fight over the same I2C/GPIO hardware.
+        from waitress import serve
+        serve(app, host=FLASK_HOST, port=FLASK_PORT, threads=8)
     finally:
         # Cleanup on exit
         motor_ctrl.cleanup()

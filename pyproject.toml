@@ -11,6 +11,7 @@ dependencies = [
     "flask>=2.3.0",
     "flask-cors>=4.0.0",
     "Werkzeug>=2.3.0",
+    "waitress>=2.1.2",
     # "picamera2>=0.3.34",
     "robot-hat",
 ]
