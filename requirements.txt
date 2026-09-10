@@ -1,10 +1,9 @@
 flask==2.3.0
 flask-cors==4.0.0
 Werkzeug==2.3.0
+waitress==2.1.2
 picamera2>=0.3.34
 robot-hat
-
-# RPi.GPIO installed via apt (python3-rpi.gpio)
 
 # Note: This file is maintained for compatibility
 # Primary dependency management is via pyproject.toml and uv

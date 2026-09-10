@@ -11,9 +11,9 @@ dependencies = [
     "flask>=2.3.0",
     "flask-cors>=4.0.0",
     "Werkzeug>=2.3.0",
+    "waitress>=2.1.2",
     # "picamera2>=0.3.34",
     "robot-hat",
-    "rpi-gpio==0.7.1",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +27,8 @@ dev = [
 [tool.setuptools]
 packages = ["picar", "config"]
 # exclude = ["ansible*", "frontend*", "backend*", "tests*", "docs*"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 [build-system]
 requires = ["setuptools>=77.0", "wheel"]
 build-backend = "setuptools.build_meta"
