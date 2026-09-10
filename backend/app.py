@@ -5,6 +5,7 @@ RESTful API for controlling motors, servos, and camera
 
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
+import hmac
 import sys
 from pathlib import Path
 
@@ -12,7 +13,10 @@ from pathlib import Path
 project_path = Path(__file__).parent.parent
 sys.path.insert(0, str(project_path))
 
-from config.config import FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE
+from config.config import (
+    FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE,
+    AUTH_USERNAME, AUTH_PASSWORD, ALLOWED_ORIGINS,
+)
 from picar import (
     get_motor_controller,
     get_servo_controller,
@@ -20,10 +24,39 @@ from picar import (
     get_camera_stream
 )
 
-app = Flask(__name__, 
+app = Flask(__name__,
             template_folder='../frontend/templates',
             static_folder='../frontend/static')
-CORS(app)
+CORS(app, origins=ALLOWED_ORIGINS)
+
+AUTH_ENABLED = bool(AUTH_USERNAME and AUTH_PASSWORD)
+if not AUTH_ENABLED:
+    print(
+        "WARNING: PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD are not set. "
+        "The web interface and API are UNAUTHENTICATED and controllable by "
+        "anyone who can reach this host on the network."
+    )
+
+
+@app.before_request
+def require_auth():
+    """Require HTTP Basic Auth on every request when credentials are configured."""
+    if not AUTH_ENABLED:
+        return None
+
+    auth = request.authorization
+    valid = (
+        auth is not None
+        and auth.username is not None
+        and auth.password is not None
+        and hmac.compare_digest(auth.username, AUTH_USERNAME)
+        and hmac.compare_digest(auth.password, AUTH_PASSWORD)
+    )
+    if not valid:
+        return Response(
+            'Authentication required', 401,
+            {'WWW-Authenticate': 'Basic realm="PiCar-X"'}
+        )
 
 # Get controller instances
 motor_ctrl = get_motor_controller()
