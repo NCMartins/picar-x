@@ -42,6 +42,8 @@ Raspberry Pi Hardware
 | `picar/voice/agent.py` | Claude tool-use loop for voice commands |
 | `picar/voice/skills.py` | Bounded robot primitives - the voice safety envelope |
 | `picar/voice/tools.py` | Tool schemas exposed to Claude, and dispatch |
+| `picar/voice/listener.py` | Always-on microphone: VAD, segmentation, dispatch |
+| `picar/voice/wakeword.py` | Wake-word and stop-phrase matching |
 | `backend/app.py` | Flask REST API server |
 | `frontend/templates/index.html` | Web UI template |
 | `frontend/static/control.js` | Client-side API calls & keyboard control |
@@ -75,6 +77,14 @@ Each hardware component is a separate module:
 3. **UI element**: Update `frontend/` files
 4. **Config**: Add settings to `config/config.py`
 
+### Configuration
+`config/config.py` is the single source of truth, and every
+deployment-varying setting reads from an environment variable with the
+checked-in value as its default. Deployments (the Ansible systemd unit, a
+shell profile) override through the environment - never by writing a rewritten
+copy of `config.py`, which is how the Ansible template silently drifted out of
+sync and stopped importing.
+
 ### Testing
 - Supports simulation mode on systems without hardware
 - All controllers check hardware availability at initialization
@@ -105,7 +115,8 @@ Each hardware component is a separate module:
 **Camera**: `POST /api/camera/{pan|tilt|position|center}`  
 **Streaming**: `GET /stream` (MJPEG)  
 **Health**: `GET /api/health`  
-**Voice**: `POST /api/voice/{command|audio|stop|reset}`, `GET /api/voice/{status|transcript}`
+**Voice**: `POST /api/voice/{command|audio|stop|reset}`, `GET /api/voice/{status|transcript}`  
+**Voice listener**: `GET /api/voice/listener`, `POST /api/voice/listener/{start|stop}`
 
 ## Common Tasks
 

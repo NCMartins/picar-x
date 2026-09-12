@@ -67,11 +67,15 @@ class Transcriber:
             logger.info("Whisper model loaded")
         return self._model
 
-    def transcribe(self, audio_path: str) -> str:
-        """Transcribe an audio file to text. Returns "" if nothing was said."""
+    def transcribe(self, audio) -> str:
+        """Transcribe audio to text. Returns "" if nothing was said.
+
+        Accepts a path or an open binary file object - the on-board listener
+        passes an in-memory WAV so a short command never touches the SD card.
+        """
         model = self._ensure_model()
         segments, _info = model.transcribe(
-            audio_path,
+            audio,
             language="en",
             beam_size=1,          # greedy: this is a short command, not a lecture
             vad_filter=True,      # drop the silence around a push-to-talk clip

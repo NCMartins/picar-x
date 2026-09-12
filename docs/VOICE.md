@@ -4,12 +4,17 @@ Hold a button on your phone, say *"what can you see?"*, and the car aims its
 camera, looks, and answers out loud. Say *"drive forward a bit"* and it checks
 the way is clear first.
 
-Speech recognition runs in your **browser**, not on the Pi. Your phone is
-already an excellent microphone with an excellent recogniser built in, so the
-default setup needs no extra hardware at all — no USB mic, no wake-word
-engine, no audio configuration. The recognised text is POSTed to the Pi,
-Claude decides what the car should do, and the reply comes back out of the
-car's own speaker.
+There are two ways to talk to it:
+
+- **From your phone** (default, no extra hardware). Speech recognition runs in
+  the browser — your phone is already an excellent microphone with an
+  excellent recogniser built in. The recognised text is POSTed to the Pi.
+- **From the car itself** (needs a USB microphone). The Pi listens for the
+  wake word continuously and no browser is involved at all. See
+  [the car's own microphone](#the-cars-own-microphone-no-phone-in-the-loop).
+
+Either way, Claude decides what the car should do and the reply comes back out
+of the car's own speaker.
 
 ---
 
@@ -221,26 +226,111 @@ looking cost more, since each photo is an image input.
 
 ---
 
-## Optional: a microphone on the car itself
+## The car's own microphone (no phone in the loop)
 
-To cut the phone out of the loop entirely, plug a USB microphone into the Pi
-and install local transcription:
+Plug a USB microphone into the Pi and the car listens for its own name
+continuously. No browser, no phone, no button — you walk into the room and
+say *"Claude, what can you see?"*
 
 ```bash
-uv pip install faster-whisper
+sudo apt-get install -y libportaudio2 espeak-ng
+uv pip install -e ".[mic]"
+
+export PICAR_VOICE_LISTENER_ENABLED=1
+./start.sh
 ```
 
-Then POST audio to `/api/voice/audio` instead of text:
+It starts with the server. The web UI also gets a **Listen on the car** toggle
+so you can turn it on and off without a restart, and `/api/voice/listener`
+reports what it's doing.
+
+### How it listens
+
+```
+microphone ──► 30 ms frames ──► voice activity detection ──► speech segment
+                                                                   │
+                           spoken reply ◄── Claude ◄── transcribe ◄─┘
+```
+
+Voice activity detection gates everything, so a silent room costs almost no
+CPU — transcription and the model only run once someone has actually spoken.
+
+Both of these work:
+
+- **"Claude, drive forward a bit"** — one breath. The wake word and the
+  command are transcribed together, so there's no beep to wait for.
+- **"Claude?"** … *"Yes?"* … **"what can you see?"** — the car answers and
+  treats the next thing you say as the command for six seconds.
+
+Two behaviours worth knowing:
+
+- **The car ignores its own voice.** Its speaker is centimetres from the
+  microphone, so audio captured while it's talking is discarded. Without that
+  it wakes on its own replies and talks to itself indefinitely. The
+  consequence is that it won't hear you *while* it's speaking — press STOP in
+  the browser if you need to interrupt mid-sentence.
+- **"Stop" still bypasses the model**, on this path too.
+
+### Choosing a wake-word backend
+
+| Backend | Cost | Phrases |
+|---|---|---|
+| `transcript` (default) | Transcribes every speech segment in the room | Anything, including "Claude" |
+| `openwakeword` | A small always-on classifier; much cheaper in a noisy room | Only phrases it has a model for |
+
+The default matches the wake word in transcribed speech. It needs no extra
+model and lets you use the car's actual name, at the cost of running Whisper
+on every utterance it hears — fine in a quiet room, heavy in a noisy one.
+
+`openwakeword` is the efficient alternative, but its pretrained set is
+`hey_jarvis`, `alexa`, `hey_mycroft` and similar — there is no "hey Claude"
+model unless you train one. To use it:
 
 ```bash
-arecord -d 4 -f cd -t wav /tmp/cmd.wav
+uv pip install openwakeword
+export PICAR_VOICE_WAKE_BACKEND=openwakeword
+export PICAR_VOICE_WAKE_MODEL=hey_jarvis     # or a path to your own .onnx
+```
+
+`auto` (the default) uses openWakeWord when it's installed and its model
+loads, and otherwise falls back to transcript matching.
+
+### Microphone configuration
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PICAR_VOICE_LISTENER_ENABLED` | `0` | Start listening with the server |
+| `PICAR_VOICE_WAKE_WORD` | `claude` | Also accepts common mishearings ("cloud", "clode") |
+| `PICAR_VOICE_WAKE_BACKEND` | `auto` | `auto`, `transcript` or `openwakeword` |
+| `PICAR_VOICE_MIC_DEVICE` | system default | Index or name substring; `python -m sounddevice` lists them |
+| `PICAR_VOICE_VAD_AGGRESSIVENESS` | `2` | 0–3. Raise in a noisy room, lower if quiet speech is missed |
+| `PICAR_VOICE_SEGMENT_SILENCE_MS` | `700` | Silence that marks the end of what you said |
+| `PICAR_VOICE_COMMAND_WINDOW_SECONDS` | `6` | How long a bare "Claude?" stays armed |
+
+Check the microphone is seen at all:
+
+```bash
+arecord -l                       # does Linux see the device?
+python -m sounddevice            # does PortAudio see it, and at which index?
+arecord -d 3 -f S16_LE -r 16000 -c 1 /tmp/t.wav && aplay /tmp/t.wav
+```
+
+### Using audio from elsewhere
+
+`/api/voice/audio` takes a recorded clip directly, for scripting or for a
+browser that can't do speech recognition itself:
+
+```bash
+arecord -d 4 -f S16_LE -r 16000 -c 1 /tmp/cmd.wav
 curl -u picar:... -F "audio=@/tmp/cmd.wav" http://<pi-ip>:5000/api/voice/audio
 ```
 
-Expect one to three seconds of transcription on a Pi 4 with the default
-`base.en` model. `PICAR_VOICE_STT_MODEL=tiny.en` is roughly twice as fast and
-noticeably worse with names. The model loads on first use and stays resident
-(~150 MB), so installs that never use this path pay nothing.
+### Transcription speed
+
+Expect one to three seconds on a Pi 4 with the default `base.en` model.
+`PICAR_VOICE_STT_MODEL=tiny.en` is roughly twice as fast and noticeably worse
+with names. The model loads on first use and stays resident (~150 MB), so
+installs that never listen pay nothing.
 
 ---
 
@@ -254,6 +344,9 @@ noticeably worse with names. The model loads on first use and stays resident
 | `/api/voice/stop` | POST | Emergency stop. Never reaches the model |
 | `/api/voice/reset` | POST | Forget the conversation |
 | `/api/voice/transcript` | GET | The conversation so far |
+| `/api/voice/listener` | GET | Whether the car is listening through its own microphone |
+| `/api/voice/listener/start` | POST | Start listening on the car |
+| `/api/voice/listener/stop` | POST | Stop listening and release the microphone |
 
 A successful command returns:
 
@@ -302,6 +395,16 @@ speed — a poor trade for the safety-relevant "is it clear ahead?" calls.
 it's being handed a blank placeholder and is correctly refusing to make
 something up. Check `rpicam-still --list-cameras` and that `picamera2` is
 visible to the venv (`uv venv --system-site-packages`).
+
+**The car's microphone hears nothing** — check the device is visible to
+PortAudio (`python -m sounddevice`) and set `PICAR_VOICE_MIC_DEVICE` to its
+index if the default is the wrong one. If it hears you but never wakes, lower
+`PICAR_VOICE_VAD_AGGRESSIVENESS` and watch the logs: every transcription is
+logged as `Heard: ...`, so you can see exactly what it thought you said.
+
+**The car talks to itself** — shouldn't happen (audio captured while it speaks
+is discarded), but if TTS is coming out of a device the listener also captures,
+check `PICAR_VOICE_MIC_DEVICE` points at the microphone and not at a loopback.
 
 **It refuses to drive** — usually correct behaviour. Ask *"what can you
 see?"* to find out why. If the view is dark, add light: it's told to treat

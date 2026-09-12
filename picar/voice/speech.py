@@ -50,6 +50,17 @@ class Speaker:
     def available(self) -> bool:
         return self._binary is not None
 
+    @property
+    def speaking(self) -> bool:
+        """True while a reply is being spoken.
+
+        The on-board microphone sits centimetres from the speaker, so the
+        listener uses this to discard audio the car is producing itself -
+        without it, the car wakes on its own replies and talks to itself.
+        """
+        process = self._current
+        return process is not None and process.poll() is None
+
     def _enable_amplifier(self) -> None:
         """Switch on the Robot Hat's speaker amp (once, best effort).
 

@@ -25,6 +25,7 @@ from config.config import (
     FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE,
     AUTH_USERNAME, AUTH_PASSWORD, ALLOWED_ORIGINS,
     VOICE_ENABLED, VOICE_MODEL, VOICE_MAX_SPEED, VOICE_MAX_MOVE_SECONDS,
+    VOICE_LISTENER_ENABLED, VOICE_WAKE_WORD,
 )
 from picar import (
     get_motor_controller,
@@ -33,8 +34,10 @@ from picar import (
     get_camera_stream
 )
 from picar.voice import (
+    ListenerUnavailable,
     TranscriberUnavailable,
     VoiceAgentUnavailable,
+    get_listener,
     get_speaker,
     get_transcriber,
     get_voice_agent,
@@ -88,6 +91,15 @@ if not VOICE_ENABLED:
     )
 else:
     logger.info("Voice control enabled using model %s", VOICE_MODEL)
+    if VOICE_LISTENER_ENABLED:
+        # Best effort: a missing microphone or audio library must not stop the
+        # server from coming up, since everything else still works without it.
+        try:
+            get_listener().start()
+        except ListenerUnavailable as exc:
+            logger.warning("On-board microphone unavailable: %s", exc)
+        except Exception:
+            logger.exception("Could not start the on-board microphone listener")
     if not AUTH_ENABLED:
         logger.warning(
             "Voice control is enabled but the API is UNAUTHENTICATED. Anyone who "
@@ -316,6 +328,8 @@ def voice_status():
         'model': VOICE_MODEL if voice_agent.available else None,
         'speaker_available': get_speaker().available,
         'local_transcription': get_transcriber().loaded,
+        'listening': get_listener().running,
+        'wake_word': VOICE_WAKE_WORD,
         'max_speed': VOICE_MAX_SPEED,
         'max_move_seconds': VOICE_MAX_MOVE_SECONDS,
     })
@@ -423,6 +437,42 @@ def voice_stop():
     return jsonify({'status': 'success', 'action': 'emergency_stop'})
 
 
+@app.route('/api/voice/listener', methods=['GET'])
+def voice_listener_status():
+    """Whether the car is listening through its own microphone."""
+    listener = get_listener()
+    return jsonify({
+        'configured': VOICE_LISTENER_ENABLED,
+        'wake_word': VOICE_WAKE_WORD,
+        **listener.status,
+    })
+
+
+@app.route('/api/voice/listener/start', methods=['POST'])
+def voice_listener_start():
+    """Start listening through the on-board microphone."""
+    if not VOICE_ENABLED:
+        return jsonify({
+            'status': 'error',
+            'message': 'Voice control is not configured. Set ANTHROPIC_API_KEY.',
+        }), 503
+    try:
+        get_listener().start()
+    except ListenerUnavailable as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 501
+    except Exception as exc:
+        logger.exception("Could not start the listener")
+        return jsonify({'status': 'error', 'message': str(exc)}), 500
+    return jsonify({'status': 'success', **get_listener().status})
+
+
+@app.route('/api/voice/listener/stop', methods=['POST'])
+def voice_listener_stop():
+    """Stop listening and release the microphone."""
+    get_listener().stop()
+    return jsonify({'status': 'success', **get_listener().status})
+
+
 @app.route('/api/voice/reset', methods=['POST'])
 def voice_reset():
     """Forget the conversation so far and start fresh."""
@@ -495,6 +545,7 @@ if __name__ == '__main__':
         serve(app, host=FLASK_HOST, port=FLASK_PORT, threads=8)
     finally:
         # Cleanup on exit
+        get_listener().stop()
         motor_ctrl.cleanup()
         servo_ctrl.cleanup()
         steering_ctrl.cleanup()

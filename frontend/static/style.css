@@ -646,3 +646,21 @@ footer p {
     outline: none;
     border-color: var(--secondary);
 }
+
+.voice-onboard {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    background: var(--light);
+    border-radius: 8px;
+}
+
+.voice-onboard-state {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.9em;
+    color: var(--primary);
+}

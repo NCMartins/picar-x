@@ -1,6 +1,7 @@
 """Voice control: talk to the PiCar and it acts, looks and answers."""
 
 from .agent import VoiceAgent, VoiceAgentUnavailable
+from .listener import ListenerUnavailable, VoiceListener, get_listener
 from .skills import RobotSkills
 from .speech import Speaker, get_speaker
 from .transcriber import Transcriber, TranscriberUnavailable, get_transcriber
@@ -14,6 +15,9 @@ __all__ = [
     'Transcriber',
     'TranscriberUnavailable',
     'get_transcriber',
+    'VoiceListener',
+    'ListenerUnavailable',
+    'get_listener',
     'get_voice_agent',
 ]
 

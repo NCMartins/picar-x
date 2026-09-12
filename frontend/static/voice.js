@@ -29,7 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!panel) return;
 
     refreshVoiceStatus();
+    refreshOnboardListener();
     setInterval(refreshVoiceStatus, 5000);
+    setInterval(refreshOnboardListener, 5000);
     loadTranscript();
     setupRecognition();
 
@@ -43,6 +45,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     document.getElementById('voice-stop')?.addEventListener('click', emergencyStop);
+    document.getElementById('voice-listener-toggle')
+        ?.addEventListener('click', toggleOnboardListener);
     document.getElementById('voice-reset')?.addEventListener('click', resetConversation);
     document.getElementById('voice-text-form')?.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -95,6 +99,61 @@ function setVoiceControlsEnabled(enabled) {
         const el = document.getElementById(id);
         if (el) el.disabled = !enabled;
     });
+}
+
+// ===== The car's own microphone =====
+// Optional second input path: with a USB mic on the Pi the car listens for
+// its wake word itself and this browser isn't in the loop at all. The panel
+// stays hidden unless the Pi reports the hardware is actually usable.
+async function refreshOnboardListener() {
+    const panel = document.getElementById('voice-onboard');
+    if (!panel) return;
+
+    try {
+        const response = await fetch('/api/voice/listener');
+        const data = await response.json();
+
+        // Show the control if it's configured or already running; a Pi with
+        // no microphone shouldn't advertise a button that can't work.
+        panel.hidden = !(data.configured || data.running);
+
+        const state = document.getElementById('voice-onboard-state');
+        const button = document.getElementById('voice-listener-toggle');
+        if (data.running) {
+            const heard = data.last_heard ? ` · last heard: “${data.last_heard}”` : '';
+            state.textContent = data.awaiting_command
+                ? `Car's own microphone: waiting for your command${heard}`
+                : `Car's own microphone: listening for “${data.wake_word}”${heard}`;
+            button.textContent = 'Stop listening on the car';
+        } else {
+            state.textContent = data.error
+                ? `Car's own microphone: ${data.error}`
+                : "Car's own microphone: off";
+            button.textContent = 'Listen on the car';
+        }
+    } catch (error) {
+        console.debug('Listener status unavailable');
+    }
+}
+
+async function toggleOnboardListener() {
+    const button = document.getElementById('voice-listener-toggle');
+    const starting = button.textContent.startsWith('Listen');
+    button.disabled = true;
+
+    try {
+        const response = await fetch(
+            `/api/voice/listener/${starting ? 'start' : 'stop'}`, { method: 'POST' });
+        const data = await response.json();
+        if (!response.ok) {
+            addTranscriptLine('system', data.message || 'Could not change the microphone.');
+        }
+    } catch (error) {
+        addTranscriptLine('system', 'Could not reach the car.');
+    } finally {
+        button.disabled = false;
+        refreshOnboardListener();
+    }
 }
 
 // ===== Speech recognition =====

@@ -50,7 +50,9 @@ picar/
 │   │   ├── skills.py          # Bounded robot primitives (safety envelope)
 │   │   ├── tools.py           # Tool schemas + dispatch
 │   │   ├── speech.py          # espeak-ng output
-│   │   ├── transcriber.py     # Optional on-Pi speech-to-text
+│   │   ├── listener.py        # Always-on mic: VAD, segmentation, dispatch
+│   │   ├── wakeword.py        # Wake-word + stop-phrase matching
+│   │   ├── transcriber.py     # On-Pi speech-to-text
 │   │   └── __init__.py
 │   └── __init__.py
 ├── backend/
@@ -238,6 +240,17 @@ Two things to know before you start:
   [docs/VOICE.md](docs/VOICE.md#safety) for the full envelope and how to
   change it.
 
+Want the phone out of the loop entirely? Plug a USB microphone into the Pi:
+
+```bash
+sudo apt-get install -y libportaudio2
+uv pip install -e ".[mic]"
+export PICAR_VOICE_LISTENER_ENABLED=1
+```
+
+The car then listens for its own name continuously - walk into the room and
+say *"Claude, what can you see?"*. Details in [docs/VOICE.md](docs/VOICE.md).
+
 Voice control is off unless `ANTHROPIC_API_KEY` is set - everything else works
 exactly as before without it.
 
@@ -397,6 +410,12 @@ frontend sends commands.
 
 - `GET /api/voice/transcript` - The conversation so far
 
+- `GET /api/voice/listener` - On-board microphone status
+
+- `POST /api/voice/listener/start` - Start listening on the car
+
+- `POST /api/voice/listener/stop` - Stop listening on the car
+
 ### System
 
 - `GET /api/health` - Health check and system status
@@ -507,7 +526,6 @@ sudo usermod -aG gpio $USER
 
 ## Future Enhancements
 
-- 🎙️ On-board wake-word detection (no phone in the loop)
 - 🤖 Autonomous navigation with object detection
 - 📡 WebSocket support for lower latency
 - 🗺️ Map visualization during movement

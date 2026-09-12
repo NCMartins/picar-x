@@ -25,6 +25,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# On-board microphone, so the car listens for its wake word without a phone.
+# Needs the PortAudio system library too:
+#   sudo apt-get install -y libportaudio2 espeak-ng
+# openwakeword is optional on top of this: it makes always-on listening much
+# cheaper, but has no pretrained "Claude" model - see docs/VOICE.md.
+mic = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "faster-whisper>=1.0.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
