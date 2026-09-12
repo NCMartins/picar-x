@@ -501,3 +501,148 @@ footer p {
         width: 70px;
     }
 }
+
+/* ===== Voice Control ===== */
+.voice-section h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.voice-badge {
+    font-size: 0.5em;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    color: white;
+    background: #95a5a6;
+}
+
+.voice-badge-ready { background: var(--success); }
+.voice-badge-live { background: var(--accent); }
+.voice-badge-busy { background: var(--warning); }
+.voice-badge-off { background: #95a5a6; }
+
+.voice-hint,
+.voice-note {
+    color: #7f8c8d;
+    font-size: 0.9em;
+    margin-bottom: 12px;
+}
+
+.voice-note:empty { margin: 0; }
+
+.voice-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.btn-voice {
+    padding: 14px 22px;
+    font-size: 1.05em;
+    font-weight: 600;
+    color: white;
+    background: var(--secondary);
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+}
+
+.btn-voice:hover:not(:disabled) { transform: translateY(-2px); }
+.btn-voice:disabled { background: #bdc3c7; cursor: not-allowed; }
+
+/* Listening is the one state worth noticing from across the room. */
+.btn-voice.listening {
+    background: var(--accent);
+    animation: voice-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes voice-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); }
+    50% { box-shadow: 0 0 0 12px rgba(231, 76, 60, 0); }
+}
+
+.voice-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.95em;
+    color: var(--primary);
+    cursor: pointer;
+}
+
+.voice-interim {
+    min-height: 1.2em;
+    color: #95a5a6;
+    font-style: italic;
+    margin-bottom: 8px;
+}
+
+.voice-transcript {
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--light);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+
+.voice-transcript:empty { display: none; }
+
+.voice-line {
+    display: flex;
+    gap: 10px;
+    padding: 6px 0;
+    line-height: 1.45;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.voice-line:last-child { border-bottom: none; }
+
+.voice-role {
+    flex: 0 0 44px;
+    font-weight: 700;
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding-top: 3px;
+    color: #7f8c8d;
+}
+
+.voice-line-operator .voice-role { color: var(--secondary); }
+.voice-line-claude .voice-role { color: var(--success); }
+.voice-line-claude .voice-text { font-weight: 500; }
+.voice-line-actions { color: #7f8c8d; font-size: 0.88em; font-family: monospace; }
+.voice-line-system { color: var(--warning); font-size: 0.9em; }
+
+.voice-thinking {
+    color: var(--secondary);
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.voice-text-form {
+    display: flex;
+    gap: 8px;
+}
+
+.voice-text-form input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #dfe6e9;
+    border-radius: 8px;
+    font-size: 1em;
+    font-family: inherit;
+}
+
+.voice-text-form input:focus {
+    outline: none;
+    border-color: var(--secondary);
+}

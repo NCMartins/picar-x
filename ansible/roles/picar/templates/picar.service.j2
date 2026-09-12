@@ -8,6 +8,16 @@ User=pi
 WorkingDirectory={{ picar_install_path }}
 ExecStart={{ ansible_env.HOME }}/.cargo/bin/uv run python backend/app.py
 Environment="PATH={{ ansible_env.HOME }}/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+{% if picar_auth_username and picar_auth_password %}
+Environment="PICAR_AUTH_USERNAME={{ picar_auth_username }}"
+Environment="PICAR_AUTH_PASSWORD={{ picar_auth_password }}"
+{% endif %}
+{% if picar_anthropic_api_key %}
+# Voice control. Keep the key in an Ansible Vault file, not in group_vars.
+Environment="ANTHROPIC_API_KEY={{ picar_anthropic_api_key }}"
+Environment="PICAR_VOICE_MODEL={{ picar_voice_model }}"
+Environment="PICAR_VOICE_MAX_SPEED={{ picar_voice_max_speed }}"
+{% endif %}
 Restart=always
 RestartSec=5
 

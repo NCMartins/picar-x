@@ -20,6 +20,21 @@ picar_service_description: "PiCar-X Control Server"
 picar_flask_host: "0.0.0.0"
 picar_flask_port: 5000
 
+# Security settings
+# Leave blank to run unauthenticated (local trusted network only). With voice
+# control enabled, an unauthenticated server also lets anyone on the network
+# spend the Anthropic API credits below - set these.
+picar_auth_username: ""
+picar_auth_password: ""
+
+# Voice control settings
+# Leave the key blank to deploy without voice control. When you do set it, put
+# it in an Ansible Vault file rather than here:
+#   ansible-vault create group_vars/picar_vault.yml
+picar_anthropic_api_key: ""
+picar_voice_model: "claude-opus-5"
+picar_voice_max_speed: 45
+
 # Hardware settings (adjust for your PiCar-X wiring)
 picar_motor_left_forward: 17
 picar_motor_left_backward: 18

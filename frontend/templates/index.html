@@ -39,6 +39,36 @@
                 </div>
             </section>
 
+            <!-- Voice Control Section -->
+            <section class="voice-section" id="voice-panel">
+                <h2>Talk to the Car
+                    <span id="voice-state" class="voice-badge voice-badge-off">checking…</span>
+                </h2>
+                <p class="voice-hint" id="voice-hint">Checking voice control…</p>
+
+                <div class="voice-controls">
+                    <button type="button" id="voice-talk" class="btn-voice">🎤 Tap to talk</button>
+                    <button type="button" id="voice-stop" class="btn-voice btn-stop">■ STOP</button>
+                    <label class="voice-toggle">
+                        <input type="checkbox" id="voice-handsfree">
+                        Hands-free (say &ldquo;Claude, …&rdquo;)
+                    </label>
+                    <button type="button" id="voice-reset" class="btn-small">Clear chat</button>
+                </div>
+
+                <p class="voice-note" id="voice-mic-note"></p>
+                <p class="voice-interim" id="voice-interim"></p>
+
+                <div class="voice-transcript" id="voice-transcript"></div>
+                <p class="voice-thinking" id="voice-thinking" hidden>Thinking…</p>
+
+                <form class="voice-text-form" id="voice-text-form">
+                    <input type="text" id="voice-text-input" autocomplete="off"
+                           placeholder="…or type a command, e.g. &ldquo;what can you see?&rdquo;">
+                    <button type="submit" class="btn-small">Send</button>
+                </form>
+            </section>
+
             <!-- Motor Control Section -->
             <section class="motor-section">
                 <h2>Movement Control</h2>
@@ -109,5 +139,6 @@
     </div>
 
     <script src="{{ url_for('static', filename='control.js') }}"></script>
+    <script src="{{ url_for('static', filename='voice.js') }}"></script>
 </body>
 </html>

@@ -7,7 +7,9 @@ from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import hmac
 import logging
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 # Add project to path
@@ -22,12 +24,20 @@ logger = logging.getLogger(__name__)
 from config.config import (
     FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE,
     AUTH_USERNAME, AUTH_PASSWORD, ALLOWED_ORIGINS,
+    VOICE_ENABLED, VOICE_MODEL, VOICE_MAX_SPEED, VOICE_MAX_MOVE_SECONDS,
 )
 from picar import (
     get_motor_controller,
     get_servo_controller,
     get_steering_controller,
     get_camera_stream
+)
+from picar.voice import (
+    TranscriberUnavailable,
+    VoiceAgentUnavailable,
+    get_speaker,
+    get_transcriber,
+    get_voice_agent,
 )
 
 app = Flask(__name__,
@@ -69,6 +79,21 @@ motor_ctrl = get_motor_controller()
 servo_ctrl = get_servo_controller()
 steering_ctrl = get_steering_controller()
 camera_stream = get_camera_stream()
+voice_agent = get_voice_agent()
+
+if not VOICE_ENABLED:
+    logger.info(
+        "Voice control is off (no ANTHROPIC_API_KEY, or PICAR_VOICE_ENABLED=0). "
+        "Manual control is unaffected."
+    )
+else:
+    logger.info("Voice control enabled using model %s", VOICE_MODEL)
+    if not AUTH_ENABLED:
+        logger.warning(
+            "Voice control is enabled but the API is UNAUTHENTICATED. Anyone who "
+            "can reach this host can drive the robot and spend your Anthropic API "
+            "credits. Set PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD."
+        )
 
 
 # ==================== Request Validation ====================
@@ -279,6 +304,138 @@ def stop_stream():
     return jsonify({'status': 'success', 'streaming': False})
 
 
+# ==================== Voice Control Routes ====================
+
+@app.route('/api/voice/status', methods=['GET'])
+def voice_status():
+    """Report whether voice control is usable, and what it's doing."""
+    return jsonify({
+        'enabled': VOICE_ENABLED,
+        'available': voice_agent.available,
+        'busy': voice_agent.busy,
+        'model': VOICE_MODEL if voice_agent.available else None,
+        'speaker_available': get_speaker().available,
+        'local_transcription': get_transcriber().loaded,
+        'max_speed': VOICE_MAX_SPEED,
+        'max_move_seconds': VOICE_MAX_MOVE_SECONDS,
+    })
+
+
+@app.route('/api/voice/command', methods=['POST'])
+def voice_command():
+    """Run one spoken command, already transcribed to text.
+
+    This is the main entry point: the browser's Web Speech API does the
+    listening on the phone and POSTs the text here, so no microphone or
+    speech software is needed on the Pi itself.
+    """
+    data = _get_json_body()
+    text = data.get('text', '')
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("'text' must be a non-empty string")
+
+    return _run_voice_command(text.strip(), speak=data.get('speak', True) is not False)
+
+
+@app.route('/api/voice/audio', methods=['POST'])
+def voice_audio():
+    """Run a spoken command from an uploaded audio clip.
+
+    For the untethered path: a USB microphone on the Pi, or a browser that
+    can't do speech recognition itself. Needs faster-whisper installed.
+    """
+    upload = request.files.get('audio')
+    if upload is None:
+        return jsonify({
+            'status': 'error',
+            'message': "No audio uploaded. POST a file under the 'audio' field.",
+        }), 400
+
+    suffix = Path(upload.filename or 'clip.wav').suffix or '.wav'
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp_path = tmp.name
+            upload.save(tmp)
+        transcript = get_transcriber().transcribe(tmp_path)
+    except TranscriberUnavailable as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 501
+    except Exception as exc:
+        logger.exception("Transcription failed")
+        return jsonify({'status': 'error', 'message': f'Transcription failed: {exc}'}), 500
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                logger.debug("Could not remove temp audio %s", tmp_path, exc_info=True)
+
+    if not transcript:
+        return jsonify({
+            'status': 'error',
+            'message': "I couldn't make out any speech in that clip.",
+            'transcript': '',
+        }), 400
+
+    return _run_voice_command(transcript, speak=True)
+
+
+def _run_voice_command(text: str, speak: bool):
+    """Shared path for text and audio commands."""
+    try:
+        result = voice_agent.handle_command(text)
+    except VoiceAgentUnavailable as exc:
+        return jsonify({'status': 'error', 'message': str(exc)}), 503
+    except RuntimeError as exc:
+        # Already running a command - the caller should wait, not retry blindly.
+        return jsonify({'status': 'error', 'message': str(exc)}), 409
+    except Exception as exc:
+        logger.exception("Voice command failed")
+        # A failure mid-drive must not leave the car moving.
+        motor_ctrl.stop()
+        steering_ctrl.center()
+        return jsonify({'status': 'error', 'message': f'Voice command failed: {exc}'}), 500
+
+    spoken = False
+    if speak and result['reply']:
+        spoken = get_speaker().say(result['reply'])
+
+    return jsonify({
+        'status': 'success',
+        'transcript': text,
+        'spoken_on_pi': spoken,
+        **result,
+    })
+
+
+@app.route('/api/voice/stop', methods=['POST'])
+def voice_stop():
+    """Emergency stop: cut motion and speech now, without asking the model.
+
+    Deliberately does not go through the agent's turn loop - this has to work
+    while a command is mid-drive and the model is mid-thought, so it only
+    touches the abort flag and the hardware.
+    """
+    voice_agent.emergency_stop()
+    get_speaker().silence()
+    motor_ctrl.stop()
+    steering_ctrl.center()
+    return jsonify({'status': 'success', 'action': 'emergency_stop'})
+
+
+@app.route('/api/voice/reset', methods=['POST'])
+def voice_reset():
+    """Forget the conversation so far and start fresh."""
+    voice_agent.reset()
+    return jsonify({'status': 'success', 'action': 'conversation_reset'})
+
+
+@app.route('/api/voice/transcript', methods=['GET'])
+def voice_transcript():
+    """The conversation so far, for rebuilding the log after a page reload."""
+    return jsonify({'transcript': voice_agent.get_transcript()})
+
+
 # ==================== Health Checks ====================
 
 @app.route('/api/health', methods=['GET'])
@@ -289,7 +446,10 @@ def health_check():
         'motors_initialized': motor_ctrl.initialized,
         'servos_initialized': servo_ctrl.initialized,
         'steering_initialized': steering_ctrl.initialized,
-        'camera_initialized': camera_stream.initialized
+        'camera_initialized': camera_stream.initialized,
+        'voice_enabled': VOICE_ENABLED,
+        'voice_available': voice_agent.available,
+        'voice_busy': voice_agent.busy,
     })
 
 

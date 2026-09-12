@@ -18,6 +18,10 @@ dependencies = [
     # `uv venv --system-site-packages` so the venv can see the system copy.
     # It's still listed in requirements.txt for the Pi install path.
     "robot-hat",
+    # Voice control. Harmless when unused: without ANTHROPIC_API_KEY the
+    # voice routes stay registered but refuse, and nothing imports the
+    # client.
+    "anthropic>=1.0.0",
 ]
 
 [project.optional-dependencies]
