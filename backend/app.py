@@ -6,12 +6,18 @@ RESTful API for controlling motors, servos, and camera
 from flask import Flask, jsonify, request, Response
 from flask_cors import CORS
 import hmac
+import logging
 import sys
 from pathlib import Path
 
 # Add project to path
 project_path = Path(__file__).parent.parent
 sys.path.insert(0, str(project_path))
+
+from backend.utils import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 from config.config import (
     FLASK_HOST, FLASK_PORT, MJPEG_CONTENT_TYPE,
@@ -31,8 +37,8 @@ CORS(app, origins=ALLOWED_ORIGINS)
 
 AUTH_ENABLED = bool(AUTH_USERNAME and AUTH_PASSWORD)
 if not AUTH_ENABLED:
-    print(
-        "WARNING: PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD are not set. "
+    logger.warning(
+        "PICAR_AUTH_USERNAME/PICAR_AUTH_PASSWORD are not set. "
         "The web interface and API are UNAUTHENTICATED and controllable by "
         "anyone who can reach this host on the network."
     )
@@ -317,7 +323,7 @@ def internal_error(error):
 
 if __name__ == '__main__':
     try:
-        print(f"Starting production server (waitress) on {FLASK_HOST}:{FLASK_PORT}")
+        logger.info("Starting production server (waitress) on %s:%s", FLASK_HOST, FLASK_PORT)
         # Flask's built-in dev server isn't meant for production use (no
         # concurrency/robustness guarantees, and it's single-threaded by
         # default - which would block motor/API requests while the MJPEG

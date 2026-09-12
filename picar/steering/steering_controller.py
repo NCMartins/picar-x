@@ -1,6 +1,7 @@
 """Steering controller for PiCar-X front wheel steering."""
 
 import inspect
+import logging
 import threading
 import json
 import sys
@@ -17,12 +18,14 @@ from config.config import (
     STEERING_CENTER_ANGLE,
 )
 
+logger = logging.getLogger(__name__)
+
 try:
     from robot_hat import Servo, PWMFactory, PWMDriverConfig
     HARDWARE_AVAILABLE = True
 except ImportError:
     HARDWARE_AVAILABLE = False
-    print("Warning: robot_hat not available - steering in simulation mode")
+    logger.warning("robot_hat not available - steering in simulation mode")
 
 
 class SteeringController:
@@ -49,7 +52,7 @@ class SteeringController:
                     data = json.load(f)
                     self.calibration_offset = int(data.get('offset', 0))
         except Exception as e:
-            print(f"Warning: failed to load steering calibration: {e}")
+            logger.warning("Failed to load steering calibration: %s", e)
             self.calibration_offset = 0
 
     def _save_calibration(self) -> None:
@@ -59,7 +62,7 @@ class SteeringController:
             with self._calibration_file.open('w', encoding='utf-8') as f:
                 json.dump({'offset': self.calibration_offset}, f, indent=2)
         except Exception as e:
-            print(f"Warning: failed to save steering calibration: {e}")
+            logger.warning("Failed to save steering calibration: %s", e)
 
     def _init_servo(self):
         """Initialize steering servo with robot-hat API compatibility."""
@@ -84,9 +87,9 @@ class SteeringController:
 
             self.initialized = True
             self.center()
-            print("Steering controller initialized successfully")
+            logger.info("Steering controller initialized successfully")
         except Exception as e:
-            print(f"Error initializing steering servo: {e}")
+            logger.error("Error initializing steering servo: %s", e)
             self.servo = None
             if self.pwm_driver:
                 try:
@@ -108,7 +111,7 @@ class SteeringController:
                 try:
                     self.servo.angle(physical_angle)
                 except Exception as e:
-                    print(f"Error setting steering angle: {e}")
+                    logger.error("Error setting steering angle: %s", e)
 
     def set_calibration_offset(self, offset: int) -> None:
         """Set and persist calibration offset used for all steering positions."""
@@ -133,9 +136,9 @@ class SteeringController:
                 self.center()
                 if self.pwm_driver:
                     self.pwm_driver.close()
-                print("Steering controller cleaned up")
+                logger.info("Steering controller cleaned up")
             except Exception as e:
-                print(f"Error cleaning up steering: {e}")
+                logger.error("Error cleaning up steering: %s", e)
 
 
 _steering_controller = None
