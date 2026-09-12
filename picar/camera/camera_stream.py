@@ -6,7 +6,6 @@ Provides MJPEG streaming and camera control
 import logging
 import threading
 import io
-import threading
 import time
 from typing import Generator
 import sys

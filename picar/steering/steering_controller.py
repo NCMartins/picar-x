@@ -1,8 +1,6 @@
 """Steering controller for PiCar-X front wheel steering."""
 
-import inspect
 import logging
-import threading
 import json
 import sys
 from pathlib import Path
@@ -18,14 +16,12 @@ from config.config import (
     STEERING_CENTER_ANGLE,
 )
 from ..hardware_component import HardwareComponent
+from ..pwm import ROBOT_HAT_AVAILABLE, create_pwm_driver, create_servo
 
 logger = logging.getLogger(__name__)
 
-try:
-    from robot_hat import Servo, PWMFactory, PWMDriverConfig
-    HARDWARE_AVAILABLE = True
-except ImportError:
-    HARDWARE_AVAILABLE = False
+HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
+if not ROBOT_HAT_AVAILABLE:
     logger.warning("robot_hat not available - steering in simulation mode")
 
 
@@ -67,23 +63,8 @@ class SteeringController(HardwareComponent):
     def _init_servo(self):
         """Initialize steering servo with robot-hat API compatibility."""
         try:
-            servo_init_params = inspect.signature(Servo.__init__).parameters
-            is_new_api = "driver" in servo_init_params and "channel" in servo_init_params
-
-            if is_new_api:
-                pwm_config = PWMDriverConfig(
-                    address=0x14,
-                    name="Sunfounder",
-                    bus=1,
-                    frame_width=20000,
-                    freq=50,
-                )
-                self.pwm_driver = PWMFactory.create_pwm_driver(pwm_config)
-                self.pwm_driver.set_pwm_freq(50)
-                self.servo = Servo(driver=self.pwm_driver, channel=STEERING_SERVO_PIN)
-            else:
-                channel = int(STEERING_SERVO_PIN[1:])
-                self.servo = Servo(channel)
+            self.pwm_driver = create_pwm_driver()
+            self.servo = create_servo(STEERING_SERVO_PIN, self.pwm_driver)
 
             self.initialized = True
             self.center()

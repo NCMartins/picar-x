@@ -4,11 +4,9 @@ Controls camera direction using servos
 """
 
 import logging
-import threading
 from typing import Optional
 import sys
 from pathlib import Path
-import inspect
 
 # Add config to path
 config_path = Path(__file__).parent.parent.parent
@@ -19,12 +17,7 @@ from config.config import (
     SERVO_MIN_ANGLE, SERVO_MAX_ANGLE
 )
 from ..hardware_component import HardwareComponent
-
-try:
-    from robot_hat import Servo, PWMFactory, PWMDriverConfig
-    ROBOT_HAT_AVAILABLE = True
-except ImportError:
-    ROBOT_HAT_AVAILABLE = False
+from ..pwm import ROBOT_HAT_AVAILABLE, create_pwm_driver, create_servo
 
 HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
 
@@ -51,28 +44,9 @@ class ServoController(HardwareComponent):
     def _init_servos(self):
         """Initialize robot_hat Servos"""
         try:
-            servo_init_params = inspect.signature(Servo.__init__).parameters
-            is_new_api = "driver" in servo_init_params and "channel" in servo_init_params
-
-            if is_new_api:
-                # robot-hat v2.3+ API: Servo(driver=..., channel=...)
-                pwm_config = PWMDriverConfig(
-                    address=0x14,
-                    name="Sunfounder",
-                    bus=1,
-                    frame_width=20000,
-                    freq=50,
-                )
-                self.pwm_driver = PWMFactory.create_pwm_driver(pwm_config)
-                self.pwm_driver.set_pwm_freq(50)
-                self.pan_servo = Servo(driver=self.pwm_driver, channel=SERVO_PAN_PIN)
-                self.tilt_servo = Servo(driver=self.pwm_driver, channel=SERVO_TILT_PIN)
-            else:
-                # Legacy API compatibility: Servo(channel)
-                pan_channel = int(SERVO_PAN_PIN[1:])
-                tilt_channel = int(SERVO_TILT_PIN[1:])
-                self.pan_servo = Servo(pan_channel)
-                self.tilt_servo = Servo(tilt_channel)
+            self.pwm_driver = create_pwm_driver()
+            self.pan_servo = create_servo(SERVO_PAN_PIN, self.pwm_driver)
+            self.tilt_servo = create_servo(SERVO_TILT_PIN, self.pwm_driver)
 
             self.initialized = True
             logger.info("Servo controller initialized successfully")
