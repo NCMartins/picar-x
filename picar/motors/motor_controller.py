@@ -3,6 +3,7 @@ Motor controller for PiCar-X movement control
 Handles DC motors for forward/backward and left/right movement
 """
 
+import logging
 import threading
 import time
 from typing import Optional, Tuple
@@ -30,8 +31,10 @@ except ImportError:
     ROBOT_HAT_AVAILABLE = False
 
 HARDWARE_AVAILABLE = ROBOT_HAT_AVAILABLE
+
+logger = logging.getLogger(__name__)
 if not ROBOT_HAT_AVAILABLE:
-    print("Warning: robot_hat not available - running in simulation mode")
+    logger.warning("robot_hat not available - running in simulation mode")
 
 
 def _resolve_motor_mapping(motor_name: str) -> Tuple[str, str]:
@@ -100,9 +103,9 @@ class MotorController(HardwareComponent):
             )
 
             self.initialized = True
-            print("Motor controller initialized successfully")
+            logger.info("Motor controller initialized successfully")
         except Exception as e:
-            print(f"Error initializing motors: {e}")
+            logger.error("Error initializing motors: %s", e)
             self.left_motor = None
             self.right_motor = None
     
@@ -150,9 +153,9 @@ class MotorController(HardwareComponent):
                 if self.left_speed == 0 and self.right_speed == 0:
                     return
                 if time.monotonic() - self._last_command_time >= MOTOR_WATCHDOG_TIMEOUT:
-                    print(
-                        f"Motor watchdog: no command received for "
-                        f"{MOTOR_WATCHDOG_TIMEOUT}s, stopping motors"
+                    logger.warning(
+                        "Motor watchdog: no command received for %ss, stopping motors",
+                        MOTOR_WATCHDOG_TIMEOUT,
                     )
                     self._set_speed_locked(0, 0)
                     return
@@ -163,7 +166,7 @@ class MotorController(HardwareComponent):
             self.left_motor.set_speed(self.left_speed)
             self.right_motor.set_speed(self.right_speed)
         except Exception as e:
-            print(f"Error setting motor speeds: {e}")
+            logger.error("Error setting motor speeds: %s", e)
     
     def forward(self, speed: int = MAX_SPEED) -> None:
         """Move forward at specified speed"""
@@ -187,9 +190,9 @@ class MotorController(HardwareComponent):
                     self.left_motor.close()
                 if self.right_motor:
                     self.right_motor.close()
-                print("Motor controller cleaned up")
+                logger.info("Motor controller cleaned up")
             except Exception as e:
-                print(f"Error cleaning up motors: {e}")
+                logger.error("Error cleaning up motors: %s", e)
 
 
 # Singleton instance
