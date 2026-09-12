@@ -3,6 +3,8 @@ Camera streaming for PiCar-X
 Provides MJPEG streaming and camera control
 """
 
+import logging
+import threading
 import io
 import threading
 import time
@@ -21,13 +23,15 @@ from config.config import (
 )
 from ..hardware_component import HardwareComponent
 
+logger = logging.getLogger(__name__)
+
 try:
     from picamera2 import Picamera2
     from PIL import Image
     HARDWARE_AVAILABLE = True
 except ImportError:
     HARDWARE_AVAILABLE = False
-    print("Warning: picamera2 not available - running in simulation mode")
+    logger.warning("picamera2 not available - running in simulation mode")
 
 
 class CameraStream(HardwareComponent):
@@ -65,9 +69,9 @@ class CameraStream(HardwareComponent):
             self.camera.configure(config)
             self.camera.start()
             self.initialized = True
-            print("Camera initialized successfully")
+            logger.info("Camera initialized successfully")
         except Exception as e:
-            print(f"Error initializing camera: {e}")
+            logger.error("Error initializing camera: %s", e)
             self.camera = None
     
     def get_frame(self) -> bytes | None:
@@ -90,7 +94,7 @@ class CameraStream(HardwareComponent):
                 img.save(buffer, format='JPEG', quality=STREAM_QUALITY)
                 return buffer.getvalue()
         except Exception as e:
-            print(f"Error capturing frame: {e}")
+            logger.error("Error capturing frame: %s", e)
             return None
     
     def _get_dummy_frame(self) -> bytes:
@@ -138,9 +142,9 @@ class CameraStream(HardwareComponent):
             try:
                 self.stop_streaming()
                 self.camera.stop()
-                print("Camera cleaned up")
+                logger.info("Camera cleaned up")
             except Exception as e:
-                print(f"Error cleaning up camera: {e}")
+                logger.error("Error cleaning up camera: %s", e)
 
 
 # Singleton instance
