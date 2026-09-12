@@ -39,6 +39,11 @@ Raspberry Pi Hardware
 | `picar/motors/motor_controller.py` | DC motor control via GPIO PWM |
 | `picar/servos/servo_controller.py` | Servo control via I2C PCA9685 |
 | `picar/camera/camera_stream.py` | Camera streaming & JPEG capture |
+| `picar/voice/agent.py` | Claude tool-use loop for voice commands |
+| `picar/voice/skills.py` | Bounded robot primitives - the voice safety envelope |
+| `picar/voice/tools.py` | Tool schemas exposed to Claude, and dispatch |
+| `picar/voice/listener.py` | Always-on microphone: VAD, segmentation, dispatch |
+| `picar/voice/wakeword.py` | Wake-word and stop-phrase matching |
 | `backend/app.py` | Flask REST API server |
 | `frontend/templates/index.html` | Web UI template |
 | `frontend/static/control.js` | Client-side API calls & keyboard control |
@@ -48,6 +53,7 @@ Raspberry Pi Hardware
 | `README.md` | Project documentation |
 | `docs/RASPI_OS_SETUP.md` | **Complete Raspberry Pi OS setup guide** |
 | `docs/ARCHITECTURE.md` | Architecture & design patterns |
+| `docs/VOICE.md` | **Voice control setup, safety envelope & API** |
 | `docs/SETUP.md` | Installation & troubleshooting |
 | `QUICKSTART.md` | Quick reference guide |
 
@@ -70,6 +76,14 @@ Each hardware component is a separate module:
 2. **API route**: Add endpoint in `backend/app.py`
 3. **UI element**: Update `frontend/` files
 4. **Config**: Add settings to `config/config.py`
+
+### Configuration
+`config/config.py` is the single source of truth, and every
+deployment-varying setting reads from an environment variable with the
+checked-in value as its default. Deployments (the Ansible systemd unit, a
+shell profile) override through the environment - never by writing a rewritten
+copy of `config.py`, which is how the Ansible template silently drifted out of
+sync and stopped importing.
 
 ### Testing
 - Supports simulation mode on systems without hardware
@@ -100,7 +114,9 @@ Each hardware component is a separate module:
 **Motor Control**: `POST /api/motors/set-speed` (individual speeds)  
 **Camera**: `POST /api/camera/{pan|tilt|position|center}`  
 **Streaming**: `GET /stream` (MJPEG)  
-**Health**: `GET /api/health`
+**Health**: `GET /api/health`  
+**Voice**: `POST /api/voice/{command|audio|stop|reset}`, `GET /api/voice/{status|transcript}`  
+**Voice listener**: `GET /api/voice/listener`, `POST /api/voice/listener/{start|stop}`
 
 ## Common Tasks
 
@@ -145,7 +161,13 @@ CAMERA_RESOLUTION = (1280, 720)  # Higher resolution
 
 ## Important Notes
 
-- **Local Network Only**: No authentication by default (for local network use)
+- **Local Network Only**: No authentication by default (for local network use).
+  This matters more once voice control is on - an open server lets anyone on
+  the network drive the car *and* spend the configured Anthropic API credits.
+- **Voice safety envelope**: Anything the voice agent can do is clamped in
+  `picar/voice/skills.py` (speed, per-move duration, per-command movement
+  budget). Never widen those limits from inside a tool or the system prompt -
+  change `config/config.py` deliberately, and keep movements self-terminating.
 - **Simulation Mode**: Code works on any system without Raspberry Pi hardware
 - **Thread Safety**: All hardware access uses locks to prevent conflicts
 - **Performance**: Streaming quality is configurable for bandwidth optimization

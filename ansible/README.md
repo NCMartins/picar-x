@@ -146,18 +146,61 @@ curl http://localhost:5000/api/health
 
 ## Advanced Configuration
 
+### How settings reach the Pi
+
+The playbook does **not** write a `config.py`. The repository's own
+`config/config.py` reads every deployment-varying setting from the
+environment, with the checked-in values as defaults, and the systemd unit
+(`roles/picar/templates/picar.service.j2`) supplies the ones that differ per
+host. That keeps one source of truth: a setting added upstream can't silently
+go missing from a deployed config, which is exactly what a templated copy of
+`config.py` used to do here.
+
+To change something, set it in `group_vars/picar.yml` and re-run the
+playbook. To check what a running Pi actually got:
+
+```bash
+sudo systemctl show picar -p Environment
+```
+
 ### Custom Hardware Wiring
 
-If your PiCar-X has different pin assignments, update `group_vars/picar.yml`:
+If your PiCar-X has different channel assignments, update
+`group_vars/picar.yml`. These use robot-hat naming — the library drives the
+motors over I2C, so there are no per-GPIO pin numbers to set:
 
 ```yaml
-picar_motor_left_forward: 17    # BCM pin number
-picar_motor_left_backward: 18
-picar_motor_right_forward: 27
-picar_motor_right_backward: 22
-picar_servo_pan_channel: 0     # PCA9685 channel
-picar_servo_tilt_channel: 1
+picar_motor_left: "M1"
+picar_motor_right: "M2"
+picar_servo_pan_pin: "P0"
+picar_servo_tilt_pin: "P1"
+picar_steering_servo_pin: "P2"
+picar_max_speed: 100
 ```
+
+### Voice Control
+
+Voice control is deployed but inactive unless you supply an API key. Put it in
+a vault file rather than `group_vars/picar.yml`:
+
+```bash
+cd ansible
+ansible-vault create group_vars/picar_vault.yml
+```
+
+```yaml
+picar_anthropic_api_key: "sk-ant-..."
+picar_auth_username: "picar"
+picar_auth_password: "a-strong-password"
+```
+
+```bash
+ansible-playbook -i inventory.ini playbook.yml --ask-vault-pass
+```
+
+Set `picar_voice_listener_enabled: true` to have the car listen through its
+own USB microphone instead of a phone. See [../docs/VOICE.md](../docs/VOICE.md)
+for both paths and the safety limits.
 
 ### Multiple Raspberry Pis
 

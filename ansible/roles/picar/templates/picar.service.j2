@@ -8,6 +8,47 @@ User=pi
 WorkingDirectory={{ picar_install_path }}
 ExecStart={{ ansible_env.HOME }}/.cargo/bin/uv run python backend/app.py
 Environment="PATH={{ ansible_env.HOME }}/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Per-host settings are passed through the environment rather than by
+# rewriting config/config.py. config.py reads every one of these with the
+# repository default as a fallback, so this unit only has to name what
+# actually differs on this Pi - and adding a setting upstream can't silently
+# break a deployment that doesn't know about it.
+
+# Server
+Environment="PICAR_FLASK_HOST={{ picar_flask_host }}"
+Environment="PICAR_FLASK_PORT={{ picar_flask_port }}"
+
+# Hardware (robot-hat channel naming)
+Environment="PICAR_MOTOR_LEFT={{ picar_motor_left }}"
+Environment="PICAR_MOTOR_RIGHT={{ picar_motor_right }}"
+Environment="PICAR_SERVO_PAN_PIN={{ picar_servo_pan_pin }}"
+Environment="PICAR_SERVO_TILT_PIN={{ picar_servo_tilt_pin }}"
+Environment="PICAR_STEERING_SERVO_PIN={{ picar_steering_servo_pin }}"
+Environment="PICAR_MAX_SPEED={{ picar_max_speed }}"
+
+# Camera
+Environment="PICAR_CAMERA_WIDTH={{ picar_camera_resolution_width }}"
+Environment="PICAR_CAMERA_HEIGHT={{ picar_camera_resolution_height }}"
+Environment="PICAR_CAMERA_FRAMERATE={{ picar_camera_framerate }}"
+
+{% if picar_auth_username and picar_auth_password %}
+# Authentication
+Environment="PICAR_AUTH_USERNAME={{ picar_auth_username }}"
+Environment="PICAR_AUTH_PASSWORD={{ picar_auth_password }}"
+{% endif %}
+{% if picar_anthropic_api_key %}
+# Voice control. Keep the key in an Ansible Vault file, not in group_vars.
+Environment="ANTHROPIC_API_KEY={{ picar_anthropic_api_key }}"
+Environment="PICAR_VOICE_MODEL={{ picar_voice_model }}"
+Environment="PICAR_VOICE_MAX_SPEED={{ picar_voice_max_speed }}"
+{% if picar_voice_listener_enabled %}
+# On-board microphone: listen for the wake word without a phone in the loop.
+Environment="PICAR_VOICE_LISTENER_ENABLED=1"
+Environment="PICAR_VOICE_WAKE_WORD={{ picar_voice_wake_word }}"
+{% endif %}
+{% endif %}
+
 Restart=always
 RestartSec=5
 

@@ -18,9 +18,23 @@ dependencies = [
     # `uv venv --system-site-packages` so the venv can see the system copy.
     # It's still listed in requirements.txt for the Pi install path.
     "robot-hat",
+    # Voice control. Harmless when unused: without ANTHROPIC_API_KEY the
+    # voice routes stay registered but refuse, and nothing imports the
+    # client.
+    "anthropic>=1.0.0",
 ]
 
 [project.optional-dependencies]
+# On-board microphone, so the car listens for its wake word without a phone.
+# Needs the PortAudio system library too:
+#   sudo apt-get install -y libportaudio2 espeak-ng
+# openwakeword is optional on top of this: it makes always-on listening much
+# cheaper, but has no pretrained "Claude" model - see docs/VOICE.md.
+mic = [
+    "sounddevice>=0.4.6",
+    "webrtcvad>=2.0.10",
+    "faster-whisper>=1.0.0",
+]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
