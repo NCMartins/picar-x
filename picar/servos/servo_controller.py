@@ -18,6 +18,7 @@ from config.config import (
     SERVO_PAN_PIN, SERVO_TILT_PIN,
     SERVO_MIN_ANGLE, SERVO_MAX_ANGLE
 )
+from ..hardware_component import HardwareComponent
 
 try:
     from robot_hat import Servo, PWMFactory, PWMDriverConfig
@@ -32,20 +33,19 @@ if not ROBOT_HAT_AVAILABLE:
     logger.warning("robot_hat not available - running in simulation mode")
 
 
-class ServoController:
+class ServoController(HardwareComponent):
     """Controls servos for camera pan/tilt movement"""
-    
+
     def __init__(self):
         """Initialize servo controller"""
+        super().__init__(HARDWARE_AVAILABLE)
         self.pan_angle = 0
         self.tilt_angle = 0
         self.pan_servo = None
         self.tilt_servo = None
         self.pwm_driver = None
-        self.lock = threading.Lock()
-        self.initialized = False
-        
-        if HARDWARE_AVAILABLE:
+
+        if self.hardware_available:
             self._init_servos()
     
     def _init_servos(self):
@@ -98,7 +98,7 @@ class ServoController:
             angle = max(SERVO_MIN_ANGLE, min(SERVO_MAX_ANGLE, angle))
             self.pan_angle = angle
             
-            if HARDWARE_AVAILABLE and self.initialized and self.pan_servo:
+            if self.ready and self.pan_servo:
                 self._apply_pan_angle()
     
     def set_tilt(self, angle: int) -> None:
@@ -112,7 +112,7 @@ class ServoController:
             angle = max(SERVO_MIN_ANGLE, min(SERVO_MAX_ANGLE, angle))
             self.tilt_angle = angle
             
-            if HARDWARE_AVAILABLE and self.initialized and self.tilt_servo:
+            if self.ready and self.tilt_servo:
                 self._apply_tilt_angle()
     
     def set_position(self, pan: int, tilt: int) -> None:
@@ -146,7 +146,7 @@ class ServoController:
     
     def cleanup(self):
         """Cleanup servo resources"""
-        if HARDWARE_AVAILABLE and self.initialized:
+        if self.ready:
             try:
                 self.center()
                 if self.pwm_driver:

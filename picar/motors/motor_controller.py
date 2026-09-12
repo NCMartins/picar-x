@@ -22,6 +22,7 @@ from config.config import (
     MOTOR_WATCHDOG_TIMEOUT,
     MOTOR_WATCHDOG_POLL_INTERVAL,
 )
+from ..hardware_component import HardwareComponent
 
 try:
     from robot_hat import MotorFactory, I2CDCMotorConfig, PWMDriverConfig
@@ -45,17 +46,16 @@ def _resolve_motor_mapping(motor_name: str) -> Tuple[str, str]:
     return mapping.get(motor_name.upper(), mapping["M1"])
 
 
-class MotorController:
+class MotorController(HardwareComponent):
     """Controls DC motors for PiCar-X movement"""
-    
+
     def __init__(self):
         """Initialize motor controller"""
+        super().__init__(HARDWARE_AVAILABLE)
         self.left_speed = 0
         self.right_speed = 0
         self.left_motor = None
         self.right_motor = None
-        self.lock = threading.Lock()
-        self.initialized = False
 
         # Dead-man's switch: auto-stop if no command refreshes the speed
         # within MOTOR_WATCHDOG_TIMEOUT seconds while the motors are moving
@@ -64,7 +64,7 @@ class MotorController:
         self._watchdog_thread: Optional[threading.Thread] = None
         self._watchdog_stop = threading.Event()
 
-        if HARDWARE_AVAILABLE:
+        if self.hardware_available:
             self._init_motors()
     
     def _init_motors(self):
@@ -130,7 +130,7 @@ class MotorController:
         self.right_speed = right_speed
         self._last_command_time = time.monotonic()
 
-        if HARDWARE_AVAILABLE and self.initialized and self.left_motor and self.right_motor:
+        if self.ready and self.left_motor and self.right_motor:
             self._apply_speed()
 
         self._update_watchdog()
@@ -183,7 +183,7 @@ class MotorController:
     def cleanup(self):
         """Cleanup motor resources"""
         self._watchdog_stop.set()
-        if HARDWARE_AVAILABLE and self.initialized:
+        if self.ready:
             try:
                 self.stop()
                 if self.left_motor:

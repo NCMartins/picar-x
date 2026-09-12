@@ -6,6 +6,7 @@ Provides MJPEG streaming and camera control
 import logging
 import threading
 import io
+import threading
 import time
 from typing import Generator
 import sys
@@ -20,6 +21,7 @@ from config.config import (
     CAMERA_ROTATION, STREAM_QUALITY,
     MJPEG_BOUNDARY, MJPEG_CONTENT_TYPE
 )
+from ..hardware_component import HardwareComponent
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +34,15 @@ except ImportError:
     logger.warning("picamera2 not available - running in simulation mode")
 
 
-class CameraStream:
+class CameraStream(HardwareComponent):
     """Handles camera streaming and control"""
-    
+
     def __init__(self):
         """Initialize camera stream"""
+        super().__init__(HARDWARE_AVAILABLE)
         self.camera = None
         # True when at least one client has an active MJPEG stream.
         self.streaming = False
-        self.lock = threading.Lock()
-        self.initialized = False
 
         # Multiple browser tabs/clients can each open their own /stream
         # connection. _active_stream_count tracks how many are currently
@@ -52,7 +53,7 @@ class CameraStream:
         self._count_lock = threading.Lock()
         self._stop_event = threading.Event()
 
-        if HARDWARE_AVAILABLE:
+        if self.hardware_available:
             self._init_camera()
     
     def _init_camera(self):
@@ -80,7 +81,7 @@ class CameraStream:
         Returns:
             JPEG frame as bytes, or None if unavailable
         """
-        if not HARDWARE_AVAILABLE or not self.initialized or not self.camera:
+        if not self.ready or not self.camera:
             # Return dummy JPEG in simulation mode
             return self._get_dummy_frame()
         
