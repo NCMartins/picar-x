@@ -41,6 +41,13 @@ picar_voice_max_speed: 45
 picar_voice_listener_enabled: false
 picar_voice_wake_word: "claude"
 
+# Audio output device for spoken replies (espeak-ng's -d flag). Leave blank
+# to use the system default, but a Pi with more than one sound card (HDMI,
+# the 3.5mm jack, a USB mic's playback side, the Robot Hat's own onboard DAC)
+# often needs this set explicitly - see docs/VOICE.md, "the car doesn't
+# speak, but replies appear on screen".
+picar_voice_tts_device: ""
+
 # Hardware settings
 # These use robot-hat channel naming, matching config/config.py. The old
 # per-GPIO motor pins (17/18/27/22) no longer apply: the robot-hat library

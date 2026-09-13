@@ -160,6 +160,17 @@ VOICE_TTS_VOICE = os.getenv('PICAR_VOICE_TTS_VOICE', 'en-us')
 VOICE_TTS_WPM = _env_int('PICAR_VOICE_TTS_WPM', 165)
 VOICE_TTS_AMPLITUDE = _env_int('PICAR_VOICE_TTS_AMPLITUDE', 150)
 
+# Left blank, espeak-ng uses whatever the system considers its default audio
+# output - which on a Pi with more than one sound card (HDMI, the 3.5mm jack,
+# a USB mic's playback device, and the Robot Hat's own I2S DAC all show up as
+# separate cards) is frequently *not* the Robot Hat's speaker. espeak-ng then
+# exits 0 with no error, having spoken correctly into the wrong device. Set
+# this to the device name espeak-ng's `-d` flag should use - an ALSA name
+# (`aplay -l`, then e.g. "plughw:CARD=sndrpihifiberry,DEV=0") or, on a system
+# running PipeWire/PulseAudio, the sink's node name (`wpctl status` /
+# `pactl list short sinks`).
+VOICE_TTS_DEVICE = os.getenv('PICAR_VOICE_TTS_DEVICE', '')
+
 # ---- Speech input (optional, on-Pi microphone) ----
 # The default input path is the browser's Web Speech API: your phone does the
 # listening and POSTs text, which needs no extra hardware. Set this to use a

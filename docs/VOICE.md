@@ -219,6 +219,7 @@ All optional; the defaults are what most people want.
 | `PICAR_VOICE_TTS_ENABLED` | `1` | `0` to always speak through the browser. |
 | `PICAR_VOICE_TTS_VOICE` | `en-us` | Any espeak-ng voice (`espeak-ng --voices`). |
 | `PICAR_VOICE_TTS_WPM` | `165` | Speaking rate. |
+| `PICAR_VOICE_TTS_DEVICE` | — | Audio output device for espeak-ng's `-d` flag. See *the car doesn't speak* below — a Pi with more than one sound card frequently needs this set explicitly. |
 
 Cost is modest: a typical command is one or two API calls, and the system
 prompt and tool definitions are cached across calls. Commands that involve
@@ -379,11 +380,40 @@ it in the unit file. Check with
 **The microphone button is disabled** — you're on plain HTTP. See *the
 microphone needs a secure connection* above. The text box works meanwhile.
 
-**The car doesn't speak, but replies appear on screen** — `espeak-ng` isn't
-installed, or the Robot Hat's amplifier is off. Test the audio path directly:
+**The car doesn't speak, but replies appear on screen** — first, is
+`espeak-ng` even installed and is the Robot Hat's amplifier on?
 
 ```bash
 espeak-ng "hello from the car"
+```
+
+If that runs with no error but you still hear nothing, `espeak-ng` most
+likely spoke correctly into the *wrong* audio device. A Pi typically exposes
+several sound cards at once (HDMI, the 3.5mm jack, a USB mic's playback side,
+and the Robot Hat's own onboard DAC/speaker), and the "default" one espeak-ng
+picks is not necessarily the Robot Hat. `espeak-ng` exits `0` either way, so
+this fails silently. Find your cards and pick the Robot Hat's:
+
+```bash
+aplay -l                              # look for the Robot Hat's DAC, e.g.
+                                       # "snd_rpi_hifiberry_dac" / "pcm5102a"
+espeak-ng -d plughw:CARD=sndrpihifiberry,DEV=0 "test"   # plain ALSA setups
+```
+
+On a system running PipeWire or PulseAudio (`wpctl status` /
+`pactl list short sinks` shows a sink for it), pass the sink's node name
+instead of an ALSA `hw:` string:
+
+```bash
+wpctl status                          # find the sink under the Robot Hat's card
+espeak-ng -d alsa_output.platform-soc_sound.stereo-fallback "test"
+```
+
+Once you've found the device that actually plays through the Robot Hat's
+speaker, set it permanently:
+
+```bash
+export PICAR_VOICE_TTS_DEVICE="plughw:CARD=sndrpihifiberry,DEV=0"   # or your sink name
 ```
 
 **Replies are slow** — most of the latency is the model. `PICAR_VOICE_EFFORT`
