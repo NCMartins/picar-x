@@ -82,10 +82,14 @@
             <section class="motor-section">
                 <h2>Movement Control</h2>
                 
+                <div id="obstacle-warning" class="obstacle-warning" hidden>
+                    ⚠ Obstacle ahead — forward drive blocked
+                </div>
+
                 <div class="joystick-container">
                     <h3>Directional Control</h3>
                     <div class="directional-buttons">
-                        <button class="btn-direction" onclick="moveForward()">▲</button>
+                        <button class="btn-direction" id="btn-forward" onclick="moveForward()">▲</button>
                     </div>
                     <div class="directional-buttons">
                         <button class="btn-direction" onclick="moveLeft()">◀</button>
@@ -117,6 +121,10 @@
                         <div class="status-item">
                             <label>Steering</label>
                             <span id="steering-angle">0°</span>
+                        </div>
+                        <div class="status-item">
+                            <label>Distance Ahead</label>
+                            <span id="distance-ahead">--</span>
                         </div>
                     </div>
                 </div>

@@ -20,7 +20,7 @@ from config.config import (
     VOICE_MAX_SPEED,
     VOICE_MAX_TOTAL_MOVE_SECONDS,
 )
-from .skills import MovementAborted, MovementBudgetExceeded, RobotSkills
+from .skills import MovementAborted, MovementBudgetExceeded, ObstacleBlocked, RobotSkills
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,10 @@ def build_tool_definitions() -> list[dict]:
                 "more ground make several calls and check what you can see between "
                 "them. At the default speed the car covers very roughly 20-30 cm per "
                 "second, but this varies with battery charge and floor surface, so "
-                "treat any distance as an estimate and verify with the camera."
+                "treat any distance as an estimate and verify with the camera. A "
+                "front-facing distance sensor independently refuses this call - it "
+                "will fail with an error rather than actually move - when something "
+                "is too close ahead."
             ),
             "input_schema": {
                 "type": "object",
@@ -170,8 +173,9 @@ def build_tool_definitions() -> list[dict]:
             "name": "get_state",
             "description": (
                 "Read the car's current pose: motor speeds, steering angle, camera "
-                "angles, whether hardware is actually connected, and how much "
-                "movement budget is left for this command."
+                "angles, whether hardware is actually connected, how much movement "
+                "budget is left for this command, and the distance sensor's current "
+                "reading directly ahead."
             ),
             "input_schema": {"type": "object", "properties": {}},
         },
@@ -227,6 +231,8 @@ def execute_tool(skills: RobotSkills, tool_use_id: str, name: str, params: dict)
     except MovementAborted as exc:
         return _error_result(tool_use_id, f"{exc} Tell the operator you have stopped.")
     except MovementBudgetExceeded as exc:
+        return _error_result(tool_use_id, str(exc))
+    except ObstacleBlocked as exc:
         return _error_result(tool_use_id, str(exc))
     except ValueError as exc:
         return _error_result(tool_use_id, f"Invalid parameters: {exc}")

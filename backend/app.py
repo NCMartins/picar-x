@@ -26,12 +26,14 @@ from config.config import (
     AUTH_USERNAME, AUTH_PASSWORD, ALLOWED_ORIGINS,
     VOICE_ENABLED, VOICE_MODEL, VOICE_MAX_SPEED, VOICE_MAX_MOVE_SECONDS,
     VOICE_LISTENER_ENABLED, VOICE_WAKE_WORD,
+    OBSTACLE_STOP_DISTANCE_CM,
 )
 from picar import (
     get_motor_controller,
     get_servo_controller,
     get_steering_controller,
-    get_camera_stream
+    get_camera_stream,
+    get_distance_sensor,
 )
 from picar.voice import (
     ListenerUnavailable,
@@ -82,6 +84,7 @@ motor_ctrl = get_motor_controller()
 servo_ctrl = get_servo_controller()
 steering_ctrl = get_steering_controller()
 camera_stream = get_camera_stream()
+distance_sensor = get_distance_sensor()
 voice_agent = get_voice_agent()
 
 if not VOICE_ENABLED:
@@ -146,7 +149,10 @@ def motor_forward():
     data = _get_json_body()
     speed = _require_number(data, 'speed', 100)
     motor_ctrl.forward(speed)
-    return jsonify({'status': 'success', 'action': 'forward', 'speed': speed})
+    return jsonify({
+        'status': 'success', 'action': 'forward', 'speed': speed,
+        'blocked_by_obstacle': motor_ctrl.blocked_by_obstacle,
+    })
 
 
 @app.route('/api/motors/backward', methods=['POST'])
@@ -174,8 +180,9 @@ def set_motor_speed():
     motor_ctrl.set_speed(left_speed, right_speed)
     return jsonify({
         'status': 'success',
-        'left_speed': left_speed,
-        'right_speed': right_speed
+        'left_speed': motor_ctrl.left_speed,
+        'right_speed': motor_ctrl.right_speed,
+        'blocked_by_obstacle': motor_ctrl.blocked_by_obstacle,
     })
 
 
@@ -184,7 +191,22 @@ def motor_status():
     """Get current motor speeds"""
     return jsonify({
         'left_speed': motor_ctrl.left_speed,
-        'right_speed': motor_ctrl.right_speed
+        'right_speed': motor_ctrl.right_speed,
+        'blocked_by_obstacle': motor_ctrl.blocked_by_obstacle,
+    })
+
+
+# ==================== Distance Sensor Routes ====================
+
+@app.route('/api/sensors/distance', methods=['GET'])
+def distance_status():
+    """Front-facing distance sensor reading and the obstacle safeguard's state."""
+    return jsonify({
+        'available': distance_sensor.hardware_available,
+        'distance_cm': distance_sensor.distance_cm,
+        'stale': distance_sensor.stale,
+        'stop_distance_cm': OBSTACLE_STOP_DISTANCE_CM,
+        'clear': motor_ctrl.obstacle_clear(),
     })
 
 

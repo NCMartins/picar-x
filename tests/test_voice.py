@@ -19,7 +19,12 @@ from config.config import (
     VOICE_MAX_TOTAL_MOVE_SECONDS,
 )
 from picar.voice.agent import VoiceAgent
-from picar.voice.skills import MovementAborted, MovementBudgetExceeded, RobotSkills
+from picar.voice.skills import (
+    MovementAborted,
+    MovementBudgetExceeded,
+    ObstacleBlocked,
+    RobotSkills,
+)
 from picar.voice.tools import build_tool_definitions, execute_tool
 
 
@@ -166,6 +171,38 @@ def test_movement_refused_while_abort_is_active(skills):
         skills.drive("forward", duration_seconds=0.1)
 
 
+# ==================== Obstacle safeguard ====================
+
+class _FakeDistanceSensor:
+    def __init__(self, clear=True, distance_cm=None):
+        self._clear = clear
+        self.distance_cm = distance_cm
+
+    def is_clear(self, min_distance_cm):
+        return self._clear
+
+
+def test_drive_forward_blocked_by_obstacle(skills, motor_controller):
+    motor_controller._distance_sensor = _FakeDistanceSensor(clear=False, distance_cm=9.0)
+    with pytest.raises(ObstacleBlocked):
+        skills.drive("forward", duration_seconds=0.1)
+    assert motor_controller.left_speed == 0
+    assert motor_controller.right_speed == 0
+
+
+def test_drive_backward_not_blocked_by_obstacle_ahead(skills, motor_controller):
+    motor_controller._distance_sensor = _FakeDistanceSensor(clear=False, distance_cm=9.0)
+    skills.drive("backward", duration_seconds=0.1, speed=30)
+    assert skills.actions[-1].name == "drive"
+    assert skills.actions[-1].fields["direction"] == "backward"
+
+
+def test_turn_blocked_by_obstacle_ahead(skills, motor_controller):
+    motor_controller._distance_sensor = _FakeDistanceSensor(clear=False, distance_cm=9.0)
+    with pytest.raises(ObstacleBlocked):
+        skills.turn("left", duration_seconds=0.1)
+
+
 def test_turn_steers_within_the_mechanical_limits(skills, steering_controller):
     from config.config import STEERING_MAX_ANGLE
 
@@ -196,6 +233,7 @@ def test_get_state_reports_budget_and_pose(skills):
     assert state["moving"] is False
     assert state["steering_angle"] == 0
     assert state["movement_budget_remaining_seconds"] == VOICE_MAX_TOTAL_MOVE_SECONDS
+    assert "distance_ahead_cm" in state
 
 
 # ==================== Tool layer ====================
@@ -231,6 +269,14 @@ def test_execute_tool_reports_errors_instead_of_raising(skills):
 def test_unknown_tool_is_an_error_result(skills):
     result = execute_tool(skills, "abc", "launch_rocket", {})
     assert result["is_error"] is True
+
+
+def test_execute_tool_reports_obstacle_block_as_an_error(skills, motor_controller):
+    motor_controller._distance_sensor = _FakeDistanceSensor(clear=False, distance_cm=9.0)
+    result = execute_tool(skills, "abc", "drive",
+                          {"direction": "forward", "duration_seconds": 0.1})
+    assert result["is_error"] is True
+    assert "ahead" in result["content"]
 
 
 def test_budget_exhaustion_reaches_the_model_as_an_error(skills):

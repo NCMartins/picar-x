@@ -72,6 +72,27 @@ MOTOR_RIGHT_DIRECTION = _env_int('PICAR_MOTOR_RIGHT_DIRECTION', -1)
 MOTOR_WATCHDOG_TIMEOUT = 1.0
 MOTOR_WATCHDOG_POLL_INTERVAL = 0.2
 
+# Distance Sensor Configuration (obstacle safeguard)
+# Front-facing HC-SR04 ultrasonic sensor, on the standard PiCar-X wiring.
+# This is a hardware-level safeguard, not a voice-only one: the motor
+# controller itself refuses to drive forward when something is this close,
+# regardless of whether the command came from the web UI or the voice agent.
+DISTANCE_TRIG_PIN = os.getenv('PICAR_DISTANCE_TRIG_PIN', 'D2')
+DISTANCE_ECHO_PIN = os.getenv('PICAR_DISTANCE_ECHO_PIN', 'D3')
+
+# Forward motion is refused below this distance, in cm. 0 disables the check.
+OBSTACLE_STOP_DISTANCE_CM = _env_int('PICAR_OBSTACLE_STOP_DISTANCE_CM', 15)
+
+# How often the background thread polls the sensor. A single HC-SR04 read can
+# take tens of milliseconds, so it happens here rather than inline in the
+# motor control path.
+DISTANCE_POLL_INTERVAL = float(os.getenv('PICAR_DISTANCE_POLL_INTERVAL', '0.1'))
+
+# A reading older than this is treated as missing and the safeguard fails
+# open (with a logged warning) rather than permanently blocking forward
+# movement over a loose wire or a sensor that's given up.
+DISTANCE_STALE_AFTER = float(os.getenv('PICAR_DISTANCE_STALE_AFTER', '2.0'))
+
 # Camera Configuration
 CAMERA_RESOLUTION = (
     _env_int('PICAR_CAMERA_WIDTH', 640),

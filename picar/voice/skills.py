@@ -50,6 +50,10 @@ class MovementAborted(RuntimeError):
     """Raised when an emergency stop interrupted a movement."""
 
 
+class ObstacleBlocked(RuntimeError):
+    """Raised when the front-facing distance sensor refuses a forward drive."""
+
+
 @dataclass
 class ActionRecord:
     """One executed skill, for the UI's activity log and for tests."""
@@ -167,6 +171,14 @@ class RobotSkills:
         if self._abort.is_set():
             raise MovementAborted("Emergency stop is active; movement refused.")
 
+        if direction == "forward" and not self._motors.obstacle_clear():
+            distance = self._motors.obstacle_distance_cm
+            where = f"about {distance:.0f}cm" if distance is not None else "very close"
+            raise ObstacleBlocked(
+                f"Something is {where} directly ahead, so forward movement was "
+                "refused. Back up, turn, or look to see what it is."
+            )
+
         self._charge_budget(duration)
 
         self._steering.set_angle(angle)
@@ -190,6 +202,20 @@ class RobotSkills:
         if not completed:
             self._record("drive", detail, aborted=True, speed=speed, duration=duration)
             raise MovementAborted(f"Emergency stop during: {detail}")
+
+        # The obstacle safeguard can also trip mid-drive (something entered
+        # range between slices in _drive_for) - the motors will have already
+        # been clamped to zero, so say so rather than reporting a full drive.
+        if direction == "forward" and self._motors.blocked_by_obstacle:
+            self._record(
+                "drive", detail + " (stopped early, obstacle ahead)",
+                speed=speed, duration=duration, direction=direction,
+            )
+            return (
+                f"Started driving {detail} but stopped early - something came "
+                f"into range ahead. Movement budget left this command: "
+                f"{self.budget_remaining:.1f}s."
+            )
 
         self._record("drive", detail, speed=speed, duration=duration, direction=direction)
         return (
@@ -297,4 +323,5 @@ class RobotSkills:
             "camera_available": self._camera.initialized,
             "hardware_connected": self._motors.ready,
             "movement_budget_remaining_seconds": round(self.budget_remaining, 1),
+            "distance_ahead_cm": self._motors.obstacle_distance_cm,
         }

@@ -15,9 +15,11 @@ document.addEventListener('DOMContentLoaded', function() {
     checkHealth();
     updateCameraStatus();
     updateSteeringStatus();
+    updateDistanceStatus();
     setInterval(checkHealth, 5000);
     setInterval(updateCameraStatus, 1000);
     setInterval(updateSteeringStatus, 1000);
+    setInterval(updateDistanceStatus, 500);
     setupKeyboardControl();
 });
 
@@ -179,6 +181,31 @@ async function updateSteeringStatus() {
         document.getElementById('steering-angle').textContent = `${currentSteering}°`;
     } catch (error) {
         console.error('Failed to update steering status:', error);
+    }
+}
+
+// ===== Distance Sensor / Obstacle Safeguard =====
+async function updateDistanceStatus() {
+    try {
+        const response = await fetch(`${API_BASE}/api/sensors/distance`);
+        const data = await response.json();
+
+        const distanceEl = document.getElementById('distance-ahead');
+        if (data.available && data.distance_cm !== null && !data.stale) {
+            distanceEl.textContent = `${Math.round(data.distance_cm)} cm`;
+        } else {
+            distanceEl.textContent = '--';
+        }
+
+        const warningEl = document.getElementById('obstacle-warning');
+        const forwardBtn = document.getElementById('btn-forward');
+        const blocked = data.available && !data.clear;
+        warningEl.hidden = !blocked;
+        if (forwardBtn) {
+            forwardBtn.classList.toggle('btn-blocked', blocked);
+        }
+    } catch (error) {
+        console.error('Failed to update distance status:', error);
     }
 }
 

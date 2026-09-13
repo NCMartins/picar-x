@@ -21,8 +21,10 @@ from config.config import (
     MOTOR_RIGHT_DIRECTION,
     MOTOR_WATCHDOG_TIMEOUT,
     MOTOR_WATCHDOG_POLL_INTERVAL,
+    OBSTACLE_STOP_DISTANCE_CM,
 )
 from ..hardware_component import HardwareComponent
+from ..sensors import get_distance_sensor
 
 try:
     from robot_hat import MotorFactory, I2CDCMotorConfig, PWMDriverConfig
@@ -49,13 +51,21 @@ def _resolve_motor_mapping(motor_name: str) -> Tuple[str, str]:
 class MotorController(HardwareComponent):
     """Controls DC motors for PiCar-X movement"""
 
-    def __init__(self):
+    def __init__(self, distance_sensor=None):
         """Initialize motor controller"""
         super().__init__(HARDWARE_AVAILABLE)
         self.left_speed = 0
         self.right_speed = 0
         self.left_motor = None
         self.right_motor = None
+
+        # Front-facing obstacle safeguard: refuses forward motion when
+        # something is too close, regardless of who's asking. See
+        # picar/sensors/distance_sensor.py.
+        self._distance_sensor = (
+            distance_sensor if distance_sensor is not None else get_distance_sensor()
+        )
+        self.blocked_by_obstacle = False
 
         # Dead-man's switch: auto-stop if no command refreshes the speed
         # within MOTOR_WATCHDOG_TIMEOUT seconds while the motors are moving
@@ -126,6 +136,19 @@ class MotorController(HardwareComponent):
         left_speed = max(-MAX_SPEED, min(MAX_SPEED, left_speed))
         right_speed = max(-MAX_SPEED, min(MAX_SPEED, right_speed))
 
+        if self._forward_blocked(left_speed, right_speed):
+            logger.warning(
+                "Obstacle %.0fcm ahead (limit %scm) - refusing forward command "
+                "(left=%s, right=%s)",
+                self._distance_sensor.distance_cm or 0,
+                OBSTACLE_STOP_DISTANCE_CM, left_speed, right_speed,
+            )
+            left_speed = 0
+            right_speed = 0
+            self.blocked_by_obstacle = True
+        else:
+            self.blocked_by_obstacle = False
+
         self.left_speed = left_speed
         self.right_speed = right_speed
         self._last_command_time = time.monotonic()
@@ -134,6 +157,26 @@ class MotorController(HardwareComponent):
             self._apply_speed()
 
         self._update_watchdog()
+
+    def _forward_blocked(self, left_speed: int, right_speed: int) -> bool:
+        """True if this command drives straight forward into something close.
+
+        Only pure forward motion (both wheels positive) is guarded - reversing
+        away from an obstacle, and turns that include a negative wheel, are
+        always allowed.
+        """
+        if left_speed <= 0 or right_speed <= 0:
+            return False
+        return not self._distance_sensor.is_clear(OBSTACLE_STOP_DISTANCE_CM)
+
+    @property
+    def obstacle_distance_cm(self) -> Optional[float]:
+        """Latest distance reading ahead, in cm, or None if nothing's in range."""
+        return self._distance_sensor.distance_cm
+
+    def obstacle_clear(self) -> bool:
+        """Whether it currently looks safe to drive forward."""
+        return self._distance_sensor.is_clear(OBSTACLE_STOP_DISTANCE_CM)
 
     def _update_watchdog(self) -> None:
         """Start/stop the watchdog thread based on whether motors are moving. Caller must hold self.lock."""

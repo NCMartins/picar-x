@@ -15,9 +15,10 @@ def test_motor_forward_and_status(client):
     r = client.post("/api/motors/forward", json={"speed": 55})
     assert r.status_code == 200
     assert r.get_json()["speed"] == 55
+    assert r.get_json()["blocked_by_obstacle"] is False
 
     status = client.get("/api/motors/status").get_json()
-    assert status == {"left_speed": 55, "right_speed": 55}
+    assert status == {"left_speed": 55, "right_speed": 55, "blocked_by_obstacle": False}
 
 
 def test_motor_stop(client):
@@ -26,7 +27,7 @@ def test_motor_stop(client):
     assert r.status_code == 200
 
     status = client.get("/api/motors/status").get_json()
-    assert status == {"left_speed": 0, "right_speed": 0}
+    assert status == {"left_speed": 0, "right_speed": 0, "blocked_by_obstacle": False}
 
 
 def test_set_individual_motor_speed(client):
@@ -37,6 +38,21 @@ def test_set_individual_motor_speed(client):
     body = r.get_json()
     assert body["left_speed"] == 30
     assert body["right_speed"] == -30
+
+
+def test_distance_status(client):
+    r = client.get("/api/sensors/distance")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert set(body) == {"available", "distance_cm", "stale", "stop_distance_cm", "clear"}
+    assert isinstance(body["available"], bool)
+    assert isinstance(body["stale"], bool)
+    assert isinstance(body["clear"], bool)
+    # No sensor wired up (or no reading yet) means the safeguard fails open
+    # rather than blocking manual driving - true whether or not robot_hat
+    # itself is installed in this environment.
+    if not body["available"] or body["stale"]:
+        assert body["clear"] is True
 
 
 def test_steering_angle_and_status(client):
