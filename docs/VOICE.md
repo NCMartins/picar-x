@@ -166,8 +166,18 @@ too, because recognisers mishear "Claude" constantly.
 ## Safety
 
 An LLM steering a real vehicle in someone's home needs limits that don't
-depend on the model behaving well. There are three layers, and only the third
+depend on the model behaving well. There are four layers, and only the last
 one relies on Claude's judgement.
+
+**0. The distance sensor (`picar/sensors/distance_sensor.py`)** — a
+front-facing ultrasonic sensor that refuses forward motion in the motor
+controller itself, below both manual control and the voice agent. Nothing
+above it, including Claude, can drive forward through it. It only looks
+straight ahead, fails open (allows movement) if readings go stale rather than
+permanently locking out manual driving over a loose wire, and is a safeguard
+against a slow approach into something solid - not a substitute for the other
+layers or for watching the car. `PICAR_OBSTACLE_STOP_DISTANCE_CM` sets the
+threshold (default 15cm, 0 disables it).
 
 **1. The movement envelope (`config/config.py`)** — enforced in code, in
 `picar/voice/skills.py`. Nothing Claude can say widens it.

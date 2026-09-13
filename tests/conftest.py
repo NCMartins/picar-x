@@ -47,6 +47,18 @@ def camera_stream():
 
 
 @pytest.fixture
+def distance_sensor():
+    from picar.sensors.distance_sensor import DistanceSensor
+    # auto_start=False: on a real Pi (robot_hat importable), starting the
+    # poll thread here would fight the app's own singleton and any other
+    # test for the same GPIO pins. Tests that need a running thread build
+    # their own DistanceSensor with an injected fake sensor instead.
+    sensor = DistanceSensor(auto_start=False)
+    yield sensor
+    sensor.cleanup()
+
+
+@pytest.fixture
 def client(tmp_path, monkeypatch):
     """Flask test client backed by the app's real (singleton) controllers.
 
