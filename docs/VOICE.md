@@ -1,0 +1,411 @@
+# Voice Control: a PiCar you can talk to
+
+Hold a button on your phone, say *"what can you see?"*, and the car aims its
+camera, looks, and answers out loud. Say *"drive forward a bit"* and it checks
+the way is clear first.
+
+There are two ways to talk to it:
+
+- **From your phone** (default, no extra hardware). Speech recognition runs in
+  the browser — your phone is already an excellent microphone with an
+  excellent recogniser built in. The recognised text is POSTed to the Pi.
+- **From the car itself** (needs a USB microphone). The Pi listens for the
+  wake word continuously and no browser is involved at all. See
+  [the car's own microphone](#the-cars-own-microphone-no-phone-in-the-loop).
+
+Either way, Claude decides what the car should do and the reply comes back out
+of the car's own speaker.
+
+---
+
+## How it fits together
+
+```
+ Your phone                        Raspberry Pi                     Anthropic
+┌──────────────┐   text command   ┌──────────────────────┐        ┌──────────┐
+│ Web Speech   │ ───────────────► │ POST /api/voice/     │ ─────► │  Claude  │
+│ recognition  │                  │        command       │        │          │
+│              │ ◄─────────────── │                      │ ◄───── │ picks a  │
+└──────────────┘  reply + actions │  VoiceAgent loop     │  tool  │   tool   │
+                                  │    ├─ drive / turn   │  calls └──────────┘
+                                  │    ├─ look / see ────┼──► camera frame
+                                  │    └─ stop / state   │      (sent as an image)
+                                  │           ▼          │
+                                  │  RobotSkills (clamps)│
+                                  │           ▼          │
+                                  │  motors / servos     │
+                                  │           ▼          │
+                                  │  espeak-ng ──► speaker
+                                  └──────────────────────┘
+```
+
+The agent loop is a normal Claude tool-use loop: Claude gets the robot's
+capabilities as tools, calls them, sees the results (including camera frames
+as images), and finishes with a sentence to say out loud.
+
+---
+
+## Setup
+
+### 1. Get an API key
+
+Create one at [console.anthropic.com](https://console.anthropic.com/settings/keys).
+
+### 2. Install the dependencies on the Pi
+
+```bash
+cd ~/picar-x
+uv pip install -r requirements.txt          # now includes anthropic
+sudo apt-get install -y espeak-ng           # so the car speaks for itself
+```
+
+`espeak-ng` is optional. Without it the reply text comes back to the browser
+and your phone speaks it instead — which works, but the car talking with its
+own voice is most of the fun.
+
+### 3. Set the key and start the server
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export PICAR_AUTH_USERNAME="pick-a-username"     # strongly recommended, see Security
+export PICAR_AUTH_PASSWORD="pick-a-strong-password"
+./start.sh
+```
+
+For the systemd service, put the key in the unit rather than a shell profile:
+
+```ini
+# /etc/systemd/system/picar.service
+[Service]
+Environment="ANTHROPIC_API_KEY=sk-ant-..."
+Environment="PICAR_AUTH_USERNAME=picar"
+Environment="PICAR_AUTH_PASSWORD=..."
+```
+
+```bash
+sudo systemctl daemon-reload && sudo systemctl restart picar
+```
+
+Check it took:
+
+```bash
+curl -u picar:... http://<pi-ip>:5000/api/voice/status
+```
+
+`"available": true` means you're ready.
+
+### 4. Open the web interface and press the microphone
+
+The **Talk to the Car** panel sits above the movement controls.
+
+---
+
+## The microphone needs a secure connection
+
+This is the one setup wrinkle worth knowing about in advance.
+
+Browsers only allow microphone access in a *secure context*. Over plain
+`http://192.168.1.204:5000` the microphone is blocked — usually silently. The
+page detects this and tells you, and the typed-command box keeps working, but
+for actual voice you need one of these:
+
+**Option A — tell Chrome to trust the Pi (easiest, desktop Chrome/Edge)**
+
+Open `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, add
+`http://192.168.1.204:5000`, and relaunch. Fine for a robot on your own LAN;
+don't do it for origins you don't control.
+
+**Option B — an SSH tunnel (no browser settings to change)**
+
+```bash
+ssh -L 5000:localhost:5000 pi@192.168.1.204
+```
+
+Then use `http://localhost:5000`, which browsers already treat as secure.
+
+**Option C — HTTPS with a self-signed certificate (works on phones)**
+
+The only option that gives you voice control from a phone on the LAN.
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+  -keyout picar-key.pem -out picar-cert.pem \
+  -subj "/CN=picar.local" \
+  -addext "subjectAltName=IP:192.168.1.204"
+```
+
+Put a TLS terminator (Caddy, nginx, or `waitress` behind one) in front of port
+5000. You'll have to accept the certificate warning once per device.
+
+---
+
+## Using it
+
+| Control | What it does |
+|---|---|
+| **🎤 Tap to talk** | Listens for one command, then acts on it. |
+| **Hands-free** | Keeps listening; acts only on utterances that start with "Claude". |
+| **■ STOP** | Emergency stop. Never reaches the model — see below. |
+| **Clear chat** | Forgets the conversation so far. |
+| **Text box** | Type a command. Always available, even without a microphone. |
+
+Things worth trying:
+
+- *"What can you see?"*
+- *"Look down and tell me if the floor is clear."*
+- *"Drive forward a little, then tell me what's in front of you."*
+- *"Turn left and look around."*
+- *"Is there anything I could bump into?"*
+
+Hands-free mode requires the wake word so that a conversation happening in the
+room doesn't drive the car across the floor. "Cloud" and "clod" are accepted
+too, because recognisers mishear "Claude" constantly.
+
+---
+
+## Safety
+
+An LLM steering a real vehicle in someone's home needs limits that don't
+depend on the model behaving well. There are three layers, and only the third
+one relies on Claude's judgement.
+
+**1. The movement envelope (`config/config.py`)** — enforced in code, in
+`picar/voice/skills.py`. Nothing Claude can say widens it.
+
+| Setting | Default | What it caps |
+|---|---|---|
+| `PICAR_VOICE_MAX_SPEED` | `45` | Top speed the agent may use (manual control still allows 100) |
+| `PICAR_VOICE_MAX_MOVE_SECONDS` | `2.0` | Longest single movement |
+| `PICAR_VOICE_MAX_TOTAL_MOVE_SECONDS` | `8.0` | Total movement per spoken command |
+| `PICAR_VOICE_MAX_TOOL_CALLS` | `12` | Actions per spoken command |
+
+Every movement is **self-terminating**: there is no "start driving" primitive,
+so a crashed process or a dropped connection cannot leave the car rolling. The
+motor watchdog already in `MotorController` is the backstop underneath that.
+
+**2. The stop path** — the STOP button and the spoken word "stop" both go
+straight to `/api/voice/stop`, which sets an abort flag and cuts the motors.
+It does not wait for the model, the network, or the current movement: drives
+in progress check the flag every 50 ms. Stopping the car never depends on an
+API call succeeding.
+
+**3. The system prompt** — Claude is told to look before driving anywhere it
+hasn't seen, to refuse to drive toward stairs, drops, water, pets or cables,
+and to treat a view too dark to judge as unsafe. This layer is the one that
+handles cases the first two can't anticipate, and it is the one you should
+trust least. Keep the car in sight.
+
+### Security
+
+The voice endpoints inherit the app's authentication settings, which are
+**off by default**. With an API key configured, an open server means anyone
+who can reach the Pi can drive your car *and* spend your Anthropic credits.
+Set `PICAR_AUTH_USERNAME`/`PICAR_AUTH_PASSWORD` — the server logs a warning at
+startup if you don't. Don't port-forward this to the internet.
+
+---
+
+## Configuration
+
+All optional; the defaults are what most people want.
+
+| Variable | Default | Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | — | Required. Voice control is off without it. |
+| `PICAR_VOICE_ENABLED` | `1` | Set `0` to disable even with a key present. |
+| `PICAR_VOICE_MODEL` | `claude-opus-5` | Any current Claude model. |
+| `PICAR_VOICE_EFFORT` | `low` | `low` keeps replies quick, which matters for speech. Raise for genuinely multi-step tasks; `none` omits the thinking/effort parameters entirely. |
+| `PICAR_VOICE_HISTORY_TURNS` | `12` | Conversation turns kept. |
+| `PICAR_VOICE_TTS_ENABLED` | `1` | `0` to always speak through the browser. |
+| `PICAR_VOICE_TTS_VOICE` | `en-us` | Any espeak-ng voice (`espeak-ng --voices`). |
+| `PICAR_VOICE_TTS_WPM` | `165` | Speaking rate. |
+
+Cost is modest: a typical command is one or two API calls, and the system
+prompt and tool definitions are cached across calls. Commands that involve
+looking cost more, since each photo is an image input.
+
+---
+
+## The car's own microphone (no phone in the loop)
+
+Plug a USB microphone into the Pi and the car listens for its own name
+continuously. No browser, no phone, no button — you walk into the room and
+say *"Claude, what can you see?"*
+
+```bash
+sudo apt-get install -y libportaudio2 espeak-ng
+uv pip install -e ".[mic]"
+
+export PICAR_VOICE_LISTENER_ENABLED=1
+./start.sh
+```
+
+It starts with the server. The web UI also gets a **Listen on the car** toggle
+so you can turn it on and off without a restart, and `/api/voice/listener`
+reports what it's doing.
+
+### How it listens
+
+```
+microphone ──► 30 ms frames ──► voice activity detection ──► speech segment
+                                                                   │
+                           spoken reply ◄── Claude ◄── transcribe ◄─┘
+```
+
+Voice activity detection gates everything, so a silent room costs almost no
+CPU — transcription and the model only run once someone has actually spoken.
+
+Both of these work:
+
+- **"Claude, drive forward a bit"** — one breath. The wake word and the
+  command are transcribed together, so there's no beep to wait for.
+- **"Claude?"** … *"Yes?"* … **"what can you see?"** — the car answers and
+  treats the next thing you say as the command for six seconds.
+
+Two behaviours worth knowing:
+
+- **The car ignores its own voice.** Its speaker is centimetres from the
+  microphone, so audio captured while it's talking is discarded. Without that
+  it wakes on its own replies and talks to itself indefinitely. The
+  consequence is that it won't hear you *while* it's speaking — press STOP in
+  the browser if you need to interrupt mid-sentence.
+- **"Stop" still bypasses the model**, on this path too.
+
+### Choosing a wake-word backend
+
+| Backend | Cost | Phrases |
+|---|---|---|
+| `transcript` (default) | Transcribes every speech segment in the room | Anything, including "Claude" |
+| `openwakeword` | A small always-on classifier; much cheaper in a noisy room | Only phrases it has a model for |
+
+The default matches the wake word in transcribed speech. It needs no extra
+model and lets you use the car's actual name, at the cost of running Whisper
+on every utterance it hears — fine in a quiet room, heavy in a noisy one.
+
+`openwakeword` is the efficient alternative, but its pretrained set is
+`hey_jarvis`, `alexa`, `hey_mycroft` and similar — there is no "hey Claude"
+model unless you train one. To use it:
+
+```bash
+uv pip install openwakeword
+export PICAR_VOICE_WAKE_BACKEND=openwakeword
+export PICAR_VOICE_WAKE_MODEL=hey_jarvis     # or a path to your own .onnx
+```
+
+`auto` (the default) uses openWakeWord when it's installed and its model
+loads, and otherwise falls back to transcript matching.
+
+### Microphone configuration
+
+| Variable | Default | Notes |
+|---|---|---|
+| `PICAR_VOICE_LISTENER_ENABLED` | `0` | Start listening with the server |
+| `PICAR_VOICE_WAKE_WORD` | `claude` | Also accepts common mishearings ("cloud", "clode") |
+| `PICAR_VOICE_WAKE_BACKEND` | `auto` | `auto`, `transcript` or `openwakeword` |
+| `PICAR_VOICE_MIC_DEVICE` | system default | Index or name substring; `python -m sounddevice` lists them |
+| `PICAR_VOICE_VAD_AGGRESSIVENESS` | `2` | 0–3. Raise in a noisy room, lower if quiet speech is missed |
+| `PICAR_VOICE_SEGMENT_SILENCE_MS` | `700` | Silence that marks the end of what you said |
+| `PICAR_VOICE_COMMAND_WINDOW_SECONDS` | `6` | How long a bare "Claude?" stays armed |
+
+Check the microphone is seen at all:
+
+```bash
+arecord -l                       # does Linux see the device?
+python -m sounddevice            # does PortAudio see it, and at which index?
+arecord -d 3 -f S16_LE -r 16000 -c 1 /tmp/t.wav && aplay /tmp/t.wav
+```
+
+### Using audio from elsewhere
+
+`/api/voice/audio` takes a recorded clip directly, for scripting or for a
+browser that can't do speech recognition itself:
+
+```bash
+arecord -d 4 -f S16_LE -r 16000 -c 1 /tmp/cmd.wav
+curl -u picar:... -F "audio=@/tmp/cmd.wav" http://<pi-ip>:5000/api/voice/audio
+```
+
+### Transcription speed
+
+Expect one to three seconds on a Pi 4 with the default `base.en` model.
+`PICAR_VOICE_STT_MODEL=tiny.en` is roughly twice as fast and noticeably worse
+with names. The model loads on first use and stays resident (~150 MB), so
+installs that never listen pay nothing.
+
+---
+
+## API reference
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/voice/status` | GET | Whether voice control is available, busy, and its limits |
+| `/api/voice/command` | POST | `{"text": "..."}` — run a command, returns reply and actions |
+| `/api/voice/audio` | POST | Multipart `audio` file — transcribe on the Pi, then run it |
+| `/api/voice/stop` | POST | Emergency stop. Never reaches the model |
+| `/api/voice/reset` | POST | Forget the conversation |
+| `/api/voice/transcript` | GET | The conversation so far |
+| `/api/voice/listener` | GET | Whether the car is listening through its own microphone |
+| `/api/voice/listener/start` | POST | Start listening on the car |
+| `/api/voice/listener/stop` | POST | Stop listening and release the microphone |
+
+A successful command returns:
+
+```json
+{
+  "status": "success",
+  "transcript": "drive forward a bit",
+  "reply": "Moved forward a little. There's a chair leg ahead.",
+  "actions": [
+    {"name": "see", "detail": "captured a 20141 byte frame", "aborted": false},
+    {"name": "drive", "detail": "forward at 30% for 1.0s", "aborted": false}
+  ],
+  "aborted": false,
+  "tool_calls": 2,
+  "hit_tool_limit": false,
+  "spoken_on_pi": true,
+  "state": {"moving": false, "steering_angle": 0, "...": "..."}
+}
+```
+
+---
+
+## Troubleshooting
+
+**`"available": false` in `/api/voice/status`** — the key isn't reaching the
+process. A key exported in your shell isn't visible to a systemd service; put
+it in the unit file. Check with
+`sudo systemctl show picar -p Environment`.
+
+**The microphone button is disabled** — you're on plain HTTP. See *the
+microphone needs a secure connection* above. The text box works meanwhile.
+
+**The car doesn't speak, but replies appear on screen** — `espeak-ng` isn't
+installed, or the Robot Hat's amplifier is off. Test the audio path directly:
+
+```bash
+espeak-ng "hello from the car"
+```
+
+**Replies are slow** — most of the latency is the model. `PICAR_VOICE_EFFORT`
+is already `low`; commands involving `see` are slower because a photo is
+uploaded. `PICAR_VOICE_MODEL=claude-haiku-4-5` trades noticeable judgement for
+speed — a poor trade for the safety-relevant "is it clear ahead?" calls.
+
+**It says it can't see anything real** — the camera is in simulation mode, so
+it's being handed a blank placeholder and is correctly refusing to make
+something up. Check `rpicam-still --list-cameras` and that `picamera2` is
+visible to the venv (`uv venv --system-site-packages`).
+
+**The car's microphone hears nothing** — check the device is visible to
+PortAudio (`python -m sounddevice`) and set `PICAR_VOICE_MIC_DEVICE` to its
+index if the default is the wrong one. If it hears you but never wakes, lower
+`PICAR_VOICE_VAD_AGGRESSIVENESS` and watch the logs: every transcription is
+logged as `Heard: ...`, so you can see exactly what it thought you said.
+
+**The car talks to itself** — shouldn't happen (audio captured while it speaks
+is discarded), but if TTS is coming out of a device the listener also captures,
+check `PICAR_VOICE_MIC_DEVICE` points at the microphone and not at a loopback.
+
+**It refuses to drive** — usually correct behaviour. Ask *"what can you
+see?"* to find out why. If the view is dark, add light: it's told to treat
+"too dark to judge" as unsafe.

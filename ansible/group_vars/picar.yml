@@ -20,13 +20,36 @@ picar_service_description: "PiCar-X Control Server"
 picar_flask_host: "0.0.0.0"
 picar_flask_port: 5000
 
-# Hardware settings (adjust for your PiCar-X wiring)
-picar_motor_left_forward: 17
-picar_motor_left_backward: 18
-picar_motor_right_forward: 27
-picar_motor_right_backward: 22
-picar_servo_pan_channel: 0
-picar_servo_tilt_channel: 1
+# Security settings
+# Leave blank to run unauthenticated (local trusted network only). With voice
+# control enabled, an unauthenticated server also lets anyone on the network
+# spend the Anthropic API credits below - set these.
+picar_auth_username: ""
+picar_auth_password: ""
+
+# Voice control settings
+# Leave the key blank to deploy without voice control. When you do set it, put
+# it in an Ansible Vault file rather than here:
+#   ansible-vault create group_vars/picar_vault.yml
+picar_anthropic_api_key: ""
+picar_voice_model: "claude-opus-5"
+picar_voice_max_speed: 45
+
+# On-board microphone: set true to have the car listen for its wake word
+# itself, with no phone in the loop. Needs a USB microphone attached and the
+# extra packages installed (see docs/VOICE.md).
+picar_voice_listener_enabled: false
+picar_voice_wake_word: "claude"
+
+# Hardware settings
+# These use robot-hat channel naming, matching config/config.py. The old
+# per-GPIO motor pins (17/18/27/22) no longer apply: the robot-hat library
+# drives the motors over I2C and addresses them as M1/M2.
+picar_motor_left: "M1"
+picar_motor_right: "M2"
+picar_servo_pan_pin: "P0"
+picar_servo_tilt_pin: "P1"
+picar_steering_servo_pin: "P2"
 picar_max_speed: 100
 picar_camera_resolution_width: 640
 picar_camera_resolution_height: 480

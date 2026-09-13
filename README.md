@@ -12,6 +12,7 @@ A modular Python-based web interface for controlling the Sunfounder PiCar-X robo
 ## Features
 
 ✨ **Core Capabilities:**
+- 🗣️ **Voice control** - talk to the car and it drives, looks and answers out loud ([docs/VOICE.md](docs/VOICE.md))
 - 🎥 Live MJPEG camera streaming
 - 🎮 Real-time motor control (forward, backward, turn)
 - 🛞 Dedicated steering calibration page with persistent center offset
@@ -44,6 +45,15 @@ picar/
 │   ├── camera/
 │   │   ├── camera_stream.py
 │   │   └── __init__.py
+│   ├── voice/
+│   │   ├── agent.py           # Claude tool-use loop
+│   │   ├── skills.py          # Bounded robot primitives (safety envelope)
+│   │   ├── tools.py           # Tool schemas + dispatch
+│   │   ├── speech.py          # espeak-ng output
+│   │   ├── listener.py        # Always-on mic: VAD, segmentation, dispatch
+│   │   ├── wakeword.py        # Wake-word + stop-phrase matching
+│   │   ├── transcriber.py     # On-Pi speech-to-text
+│   │   └── __init__.py
 │   └── __init__.py
 ├── backend/
 │   ├── app.py                 # Flask application
@@ -55,6 +65,7 @@ picar/
 │   └── static/
 │       ├── style.css
 │       ├── control.js
+│       ├── voice.js
 │       └── steering_calibration.js
 ├── requirements.txt
 └── README.md
@@ -197,6 +208,52 @@ pass HTTP Basic Auth. If you need to call the API from a different origin
 export PICAR_ALLOWED_ORIGINS="http://localhost:3000,http://192.168.1.50:3000"
 ```
 
+## Voice Control
+
+Turn the car into a mobile Claude you can talk to. Ask it what it can see and
+it aims its camera, looks, and tells you; ask it to drive and it checks the
+way is clear first, then moves in short bounded hops.
+
+Speech recognition runs in your **browser**, so no microphone or extra
+hardware is needed on the Pi - your phone already is one. Replies come out of
+the car's own speaker.
+
+```bash
+uv pip install -r requirements.txt        # includes the anthropic SDK
+sudo apt-get install -y espeak-ng         # so the car speaks for itself
+
+export ANTHROPIC_API_KEY="sk-ant-..."
+./start.sh
+```
+
+Then open the web interface and use the **Talk to the Car** panel. Try
+*"what can you see?"* or *"drive forward a little and tell me what's there."*
+
+Two things to know before you start:
+
+- **The microphone needs a secure connection.** Browsers block it on plain
+  `http://<pi-ip>:5000`. The typed-command box works regardless; for actual
+  voice, [docs/VOICE.md](docs/VOICE.md) covers the three ways round it.
+- **Movement is deliberately limited.** The agent gets at most 45% speed, 2
+  seconds per move and 8 seconds per command, every movement stops itself,
+  and "stop" bypasses the model entirely. See
+  [docs/VOICE.md](docs/VOICE.md#safety) for the full envelope and how to
+  change it.
+
+Want the phone out of the loop entirely? Plug a USB microphone into the Pi:
+
+```bash
+sudo apt-get install -y libportaudio2
+uv pip install -e ".[mic]"
+export PICAR_VOICE_LISTENER_ENABLED=1
+```
+
+The car then listens for its own name continuously - walk into the room and
+say *"Claude, what can you see?"*. Details in [docs/VOICE.md](docs/VOICE.md).
+
+Voice control is off unless `ANTHROPIC_API_KEY` is set - everything else works
+exactly as before without it.
+
 ## Usage
 
 ### Start the Server
@@ -335,6 +392,30 @@ frontend sends commands.
 
 - `POST /api/steering/calibration/reset` - Reset calibration offset to 0
 
+### Voice
+
+- `POST /api/voice/command` - Run a spoken command (already transcribed)
+  ```json
+  { "text": "what can you see?" }
+  ```
+
+- `POST /api/voice/audio` - Run a command from an uploaded audio clip
+  (multipart `audio` field; needs `faster-whisper` on the Pi)
+
+- `POST /api/voice/stop` - Emergency stop. Never reaches the model
+
+- `POST /api/voice/reset` - Forget the conversation so far
+
+- `GET /api/voice/status` - Whether voice control is available, busy, and its limits
+
+- `GET /api/voice/transcript` - The conversation so far
+
+- `GET /api/voice/listener` - On-board microphone status
+
+- `POST /api/voice/listener/start` - Start listening on the car
+
+- `POST /api/voice/listener/stop` - Stop listening on the car
+
 ### System
 
 - `GET /api/health` - Health check and system status
@@ -462,6 +543,7 @@ Private Repository
 Complete documentation available in `/docs`:
 
 - **[docs/INDEX.md](docs/INDEX.md)** - Documentation index (start here!)
+- **[docs/VOICE.md](docs/VOICE.md)** - Voice control: setup, safety envelope & troubleshooting 🗣️
 - **[docs/RASPI_OS_SETUP.md](docs/RASPI_OS_SETUP.md)** - Complete Raspberry Pi OS setup guide ⭐
 - **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Technical architecture & design patterns
 - **[docs/SETUP.md](docs/SETUP.md)** - Installation & troubleshooting

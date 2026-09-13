@@ -57,6 +57,14 @@ Deep dive into project architecture:
 - Adding new features guide
 - Performance considerations
 
+### [docs/VOICE.md](docs/VOICE.md)
+Voice control - talking to the car:
+- How the browser, Pi and Claude fit together
+- Setup: API key, espeak-ng, secure-context requirement for the microphone
+- The safety envelope and how to change it
+- Optional on-Pi microphone via faster-whisper
+- Voice API reference and troubleshooting
+
 ### [docs/SETUP.md](docs/SETUP.md)
 Installation and troubleshooting:
 - Prerequisites
@@ -92,6 +100,8 @@ Instructions for GitHub Copilot and other AI assistants:
 | Manual installation | [docs/SETUP.md](docs/SETUP.md) |
 | Understand architecture | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | API reference | [README.md](README.md#api-endpoints) |
+| Talk to the car | [docs/VOICE.md](docs/VOICE.md) |
+| Voice safety limits | [docs/VOICE.md](docs/VOICE.md#safety) |
 | Troubleshoot issues | [docs/SETUP.md](docs/SETUP.md#troubleshooting) |
 | Customize project | [README.md](README.md#customization) |
 | Develop new features | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#adding-new-features) |
@@ -134,6 +144,7 @@ picar-x/
 │   ├── RASPI_OS_SETUP.md       ← Complete Raspberry Pi setup ⭐
 │   ├── SETUP.md                ← PiCar-X installation
 │   ├── ARCHITECTURE.md         ← Technical deep dive
+│   ├── VOICE.md                ← Voice control setup & safety
 │   └── INDEX.md                ← This file
 ├── config/
 ├── picar/
@@ -211,6 +222,7 @@ picar-x/
 | docs/RASPI_OS_SETUP.md | Raspberry Pi setup | 45 min |
 | docs/SETUP.md | Installation & troubleshooting | 20 min |
 | docs/ARCHITECTURE.md | Technical deep dive | 20 min |
+| docs/VOICE.md | Voice control setup & safety | 15 min |
 | AGENT_INSTRUCTIONS.md | AI assistant context | 10 min |
 
 ---

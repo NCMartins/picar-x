@@ -18,13 +18,10 @@
     update: yes
   become_user: pi
 
-- name: Configure PiCar-X settings
-  template:
-    src: config.py.j2
-    dest: "{{ picar_install_path }}/config/config.py"
-    owner: pi
-    group: pi
-    mode: '0644'
+# Settings are NOT templated over config/config.py. The repository's own
+# config.py reads every deployment-varying setting from the environment, and
+# the systemd unit below supplies them. A rendered copy of config.py would
+# drift out of sync with upstream and eventually fail to import.
 
 - name: Sync Python dependencies with uv
   command: "{{ ansible_env.HOME }}/.cargo/bin/uv sync --python {{ python_version }}"
