@@ -61,8 +61,13 @@ class CameraStream(HardwareComponent):
             self.camera = Picamera2()
             
             # Use video configuration for continuous streaming
+            # Note: picamera2's format names are inverted from what they say -
+            # "RGB888" actually delivers frames in BGR memory order, and
+            # "BGR888" delivers true RGB order. We need real RGB here since
+            # capture_array() output is fed straight into PIL's
+            # Image.fromarray(), which assumes RGB channel order.
             config = self.camera.create_video_configuration(
-                main={"size": CAMERA_RESOLUTION, "format": "RGB888"}
+                main={"size": CAMERA_RESOLUTION, "format": "BGR888"}
             )
             
             self.camera.configure(config)
