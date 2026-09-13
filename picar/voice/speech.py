@@ -18,6 +18,7 @@ import threading
 from config.config import (
     VOICE_TTS_AMPLITUDE,
     VOICE_TTS_COMMAND,
+    VOICE_TTS_DEVICE,
     VOICE_TTS_ENABLED,
     VOICE_TTS_VOICE,
     VOICE_TTS_WPM,
@@ -111,8 +112,10 @@ class Speaker:
             "-v", VOICE_TTS_VOICE,
             "-s", str(VOICE_TTS_WPM),
             "-a", str(VOICE_TTS_AMPLITUDE),
-            "--", text,
         ]
+        if VOICE_TTS_DEVICE:
+            command += ["-d", VOICE_TTS_DEVICE]
+        command += ["--", text]
         with self._lock:
             try:
                 self._current = subprocess.Popen(

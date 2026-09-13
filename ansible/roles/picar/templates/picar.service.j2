@@ -42,6 +42,9 @@ Environment="PICAR_AUTH_PASSWORD={{ picar_auth_password }}"
 Environment="ANTHROPIC_API_KEY={{ picar_anthropic_api_key }}"
 Environment="PICAR_VOICE_MODEL={{ picar_voice_model }}"
 Environment="PICAR_VOICE_MAX_SPEED={{ picar_voice_max_speed }}"
+{% if picar_voice_tts_device %}
+Environment="PICAR_VOICE_TTS_DEVICE={{ picar_voice_tts_device }}"
+{% endif %}
 {% if picar_voice_listener_enabled %}
 # On-board microphone: listen for the wake word without a phone in the loop.
 Environment="PICAR_VOICE_LISTENER_ENABLED=1"
